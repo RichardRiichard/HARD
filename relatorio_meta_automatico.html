@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório Meta Ads — Automático</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --card: #111;
+  --card2: #161616;
+  --border: #1e1e1e;
+  --accent: #00ff87;
+  --accent-dim: rgba(0,255,135,0.07);
+  --text: #f0f0f0;
+  --muted: #555;
+  --muted2: #888;
+  --warn: #ff6b35;
+  --info: #5b9cf6;
+  --red: #f87171;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+}
+
+/* ── CONFIG PANEL ── */
+#config-panel {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.config-box {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 40px;
+  width: 480px;
+  max-width: 94vw;
+}
+.config-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.config-sub {
+  font-size: 12px;
+  color: var(--muted2);
+  margin-bottom: 32px;
+  line-height: 1.7;
+}
+.config-sub a { color: var(--accent); text-decoration: none; }
+
+.field { margin-bottom: 20px; }
+.field label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 8px;
+}
+.field input, .field select {
+  width: 100%;
+  background: #0a0a0a;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field select option { background: #111; }
+
+.config-note {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.6;
+}
+.config-note a { color: var(--accent); text-decoration: none; }
+
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+}
+.btn-primary:hover { opacity: 0.85; }
+.btn-secondary {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  color: var(--muted2);
+  border: 1px solid #222;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.2s;
+}
+.btn-secondary:hover { border-color: #333; color: var(--text); }
+
+/* ── TOPBAR ── */
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: rgba(10,10,10,0.95);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.topbar-brand {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--text);
+}
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  display: inline-block;
+}
+.status-dot.live { background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: pulse 2s infinite; }
+.status-dot.error { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.status-text { font-size: 11px; color: var(--muted2); }
+
+.topbar-right { display: flex; gap: 8px; align-items: center; }
+.btn-sm {
+  padding: 7px 14px;
+  border-radius: 5px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  transition: opacity 0.2s;
+}
+.btn-sm:hover { opacity: 0.8; }
+.btn-config { background: var(--card2); color: var(--muted2); border: 1px solid var(--border); }
+.btn-refresh { background: var(--card2); color: var(--accent); border: 1px solid rgba(0,255,135,0.2); }
+.btn-export { background: var(--accent); color: #000; font-weight: 700; }
+
+/* ── MAIN ── */
+#main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 80px 28px 64px;
+}
+
+/* ── SKELETON LOADING ── */
+.skeleton {
+  background: linear-gradient(90deg, #111 25%, #1a1a1a 50%, #111 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── REPORT HEADER ── */
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 40px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.report-client {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.report-account { font-size: 12px; color: var(--muted2); }
+.report-period-label { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; text-align: right; }
+.report-period { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--accent); text-align: right; }
+
+/* ── SECTION ── */
+.section-label {
+  font-size: 10px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+  margin-top: 32px;
+}
+
+/* ── METRIC GRIDS ── */
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; margin-bottom: 4px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; margin-bottom: 4px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 2px; margin-bottom: 4px; }
+
+.m-card {
+  background: var(--card);
+  padding: 20px 18px;
+}
+.m-card:first-child { border-radius: 8px 0 0 8px; }
+.m-card:last-child { border-radius: 0 8px 8px 0; }
+.m-label { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted2); margin-bottom: 10px; }
+.m-value { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; line-height: 1; }
+.m-value.accent { color: var(--accent); }
+.m-value.warn { color: var(--warn); }
+.m-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.m-delta { font-size: 11px; margin-top: 4px; }
+.m-delta.up { color: var(--accent); }
+.m-delta.down { color: var(--red); }
+
+/* ── INVEST BOX ── */
+.invest-box {
+  background: var(--accent-dim);
+  border: 1px solid rgba(0,255,135,0.15);
+  border-radius: 8px;
+  padding: 22px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+.invest-val { font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 700; color: var(--accent); }
+.invest-label { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(0,255,135,0.6); margin-bottom: 6px; }
+.invest-right { text-align: right; }
+.invest-sub-label { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted2); margin-bottom: 5px; }
+.invest-sub-val { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 600; }
+
+/* ── CAMPAIGNS TABLE ── */
+.camp-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+.camp-table th {
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 14px;
+  text-align: left;
+  background: var(--card2);
+  border-bottom: 1px solid var(--border);
+}
+.camp-table td {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #ccc;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.camp-table tr:last-child td { border-bottom: none; }
+.camp-table td:first-child { border-radius: 0; font-weight: 400; }
+.camp-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.s-active { background: rgba(0,255,135,0.1); color: var(--accent); }
+.s-paused { background: rgba(255,255,255,0.05); color: var(--muted2); }
+
+/* ── DIAGNÓSTICO ── */
+.diag-block {
+  background: var(--card);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+.diag-head {
+  padding: 11px 18px;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+}
+.diag-head.g { color: var(--accent); background: rgba(0,255,135,0.04); }
+.diag-head.w { color: var(--warn); background: rgba(255,107,53,0.04); }
+.diag-head.b { color: var(--info); background: rgba(91,156,246,0.04); }
+.diag-body { padding: 14px 18px; }
+.diag-item { display: flex; gap: 12px; margin-bottom: 10px; font-size: 13px; line-height: 1.6; color: #bbb; }
+.diag-item:last-child { margin-bottom: 0; }
+.dot { width:5px; height:5px; border-radius:50%; margin-top:7px; flex-shrink:0; }
+.dot.g { background: var(--accent); }
+.dot.w { background: var(--warn); }
+.dot.b { background: var(--info); }
+
+.diag-editable {
+  outline: none;
+  min-width: 100px;
+  border-radius: 3px;
+  padding: 2px 4px;
+  transition: background 0.15s;
+  cursor: text;
+}
+.diag-editable:hover { background: rgba(255,255,255,0.04); }
+.diag-editable:focus { background: rgba(0,255,135,0.07); }
+
+/* ── ERROR ── */
+.error-box {
+  background: rgba(248,113,113,0.06);
+  border: 1px solid rgba(248,113,113,0.2);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  margin: 40px 0;
+}
+.error-box h3 { color: var(--red); font-size: 15px; margin-bottom: 8px; }
+.error-box p { font-size: 13px; color: var(--muted2); line-height: 1.7; }
+.error-box code { font-family: monospace; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #ccc; }
+
+/* ── FOOTER ── */
+.report-footer {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ── LOADING ── */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,10,10,0.8);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 12px; color: var(--muted2); letter-spacing: 0.15em; }
+
+/* ── PRINT ── */
+@media print {
+  #topbar, #config-panel, #loading-overlay, .diag-editable-hint { display: none !important; }
+  body { background: white; color: #111; }
+  #main { padding-top: 24px; }
+  :root {
+    --bg: white; --card: #f7f7f7; --card2: #efefef;
+    --border: #e0e0e0; --accent: #00a65a; --accent-dim: rgba(0,166,90,0.06);
+    --text: #111; --muted: #999; --muted2: #666;
+    --warn: #d45a1a; --info: #2563eb; --red: #dc2626;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- CONFIG PANEL -->
+<div id="config-panel">
+  <div class="config-box">
+    <div class="config-title">Configurar acesso</div>
+    <div class="config-sub">
+      Cole seu token e ID de conta para o relatório puxar os dados automaticamente do Meta Ads.<br>
+      <a href="https://developers.facebook.com/tools/explorer/" target="_blank">→ Gerar token no Meta Graph Explorer</a>
+    </div>
+
+    <div class="field">
+      <label>Token de acesso (Access Token)</label>
+      <input type="password" id="input-token" placeholder="EAAxxxxxxxxxxxxxxx..." />
+      <div class="config-note">
+        No <a href="https://developers.facebook.com/tools/explorer/" target="_blank">Graph Explorer</a>, selecione seu app → clique em "Generate Access Token" → copie aqui.<br>
+        Permissões necessárias: <code>ads_read</code>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>ID da conta de anúncios</label>
+      <input type="text" id="input-account" placeholder="act_123456789" />
+      <div class="config-note">No Gerenciador de Anúncios, o ID aparece no canto superior esquerdo. Formato: act_XXXXXXXXX</div>
+    </div>
+
+    <div class="field">
+      <label>Nome do cliente (aparece no relatório)</label>
+      <input type="text" id="input-name" placeholder="Ex: Zerah, Grupo Um Toque..." />
+    </div>
+
+    <div class="field">
+      <label>Período</label>
+      <select id="input-period">
+        <option value="last_7d">Últimos 7 dias</option>
+        <option value="last_14d">Últimos 14 dias</option>
+        <option value="last_30d">Últimos 30 dias</option>
+        <option value="this_month">Mês atual</option>
+        <option value="last_month">Mês passado</option>
+      </select>
+    </div>
+
+    <button class="btn-primary" onclick="startReport()">→ Carregar relatório</button>
+    <button class="btn-secondary" onclick="loadDemo()">Ver com dados de demonstração</button>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading-overlay" style="display:none">
+  <div class="spinner"></div>
+  <div class="loading-text">Puxando dados do Meta Ads...</div>
+</div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="topbar-left">
+    <div class="topbar-brand">META ADS · RELATÓRIO</div>
+    <span class="status-dot" id="status-dot"></span>
+    <span class="status-text" id="status-text">não conectado</span>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-sm btn-config" onclick="showConfig()">⚙ configurar</button>
+    <button class="btn-sm btn-refresh" onclick="refreshData()">↻ atualizar</button>
+    <button class="btn-sm btn-export" onclick="window.print()">↓ exportar PDF</button>
+  </div>
+</div>
+
+<!-- MAIN REPORT -->
+<div id="main">
+  <div id="report-content" style="display:none">
+
+    <!-- HEADER -->
+    <div class="report-header">
+      <div>
+        <div class="report-client" id="r-client">—</div>
+        <div class="report-account" id="r-account">—</div>
+      </div>
+      <div>
+        <div class="report-period-label">Período analisado</div>
+        <div class="report-period" id="r-period">—</div>
+      </div>
+    </div>
+
+    <!-- ALCANCE -->
+    <div class="section-label">Alcance & entrega</div>
+    <div class="grid-3">
+      <div class="m-card">
+        <div class="m-label">Contas alcançadas</div>
+        <div class="m-value" id="r-reach">—</div>
+        <div class="m-sub">pessoas únicas</div>
+      </div>
+      <div class="m-card">
+        <div class="m-label">Impressões</div>
+        <div class="m-value" id="r-impressions">—</div>
+        <div class="m-sub">visualizações totais</div>
+      </div>
+      <div class="m-card">
+        <div class="m-label">Frequência média</div>
+        <div class="m-value" id="r-frequency">—</div>
+        <div class="m-sub">vezes por pessoa</div>
+      </div>
+    </div>
+
+    <!-- CONVERSÃO -->
+    <div class="section-label">Cliques & conversão</div>
+    <div class="grid-4">
+      <div class="m-card">
+        <div class="m-label">Cliques no link</div>
+        <div class="m-value accent" id="r-clicks">—</div>
+      </div>
+      <div class="m-card">
+        <div class="m-label">CTR</div>
+        <div class="m-value" id="r-ctr">—</div>
+        <div class="m-sub">cliques / impressões</div>
+      </div>
+      <div class="m-card">
+        <div class="m-label">CPC médio</div>
+        <div class="m-value" id="r-cpc">—</div>
+        <div class="m-sub">por clique</div>
+      </div>
+      <div class="m-card">
+        <div class="m-label">CPM</div>
+        <div class="m-value" id="r-cpm">—</div>
+        <div class="m-sub">por mil impressões</div>
+      </div>
+    </div>
+
+    <!-- INVESTIMENTO -->
+    <div class="section-label">Investimento</div>
+    <div class="invest-box">
+      <div>
+        <div class="invest-label">Total investido no período</div>
+        <div class="invest-val" id="r-spend">—</div>
+      </div>
+      <div class="invest-right">
+        <div class="invest-sub-label">Resultado principal</div>
+        <div class="invest-sub-val" id="r-result-label">—</div>
+        <div class="invest-label" style="margin-top:8px">Custo por resultado</div>
+        <div class="invest-sub-val accent" id="r-cpp">—</div>
+      </div>
+    </div>
+
+    <!-- CAMPANHAS -->
+    <div class="section-label">Campanhas ativas</div>
+    <table class="camp-table" id="r-campaigns">
+      <thead>
+        <tr>
+          <th>Campanha</th>
+          <th>Status</th>
+          <th>Investido</th>
+          <th>Resultados</th>
+          <th>CPR</th>
+        </tr>
+      </thead>
+      <tbody id="r-camp-body">
+        <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Carregando...</td></tr>
+      </tbody>
+    </table>
+
+    <!-- DIAGNÓSTICO -->
+    <div class="section-label">Diagnóstico</div>
+    <div class="diag-block">
+      <div class="diag-head g">✦ O que está funcionando</div>
+      <div class="diag-body">
+        <div class="diag-item"><div class="dot g"></div><div class="diag-editable" contenteditable id="d1">Analise os dados acima e escreva aqui o principal ponto positivo da semana.</div></div>
+        <div class="diag-item"><div class="dot g"></div><div class="diag-editable" contenteditable id="d2">Segundo ponto positivo — criativo, segmentação ou resultado acima do esperado.</div></div>
+      </div>
+    </div>
+    <div class="diag-block">
+      <div class="diag-head w">⚠ Ponto de atenção</div>
+      <div class="diag-body">
+        <div class="diag-item"><div class="dot w"></div><div class="diag-editable" contenteditable id="d3">O que está abaixo do esperado ou precisa de ajuste esta semana?</div></div>
+        <div class="diag-item"><div class="dot w"></div><div class="diag-editable" contenteditable id="d4">Segundo ponto de atenção, se houver.</div></div>
+      </div>
+    </div>
+    <div class="diag-block">
+      <div class="diag-head b">→ Próximos passos</div>
+      <div class="diag-body">
+        <div class="diag-item"><div class="dot b"></div><div class="diag-editable" contenteditable id="d5">Primeira ação que será tomada na próxima semana.</div></div>
+        <div class="diag-item"><div class="dot b"></div><div class="diag-editable" contenteditable id="d6">Segunda ação planejada.</div></div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="report-footer">
+      <span contenteditable>Richard · Gestor de Tráfego</span>
+      <span id="r-generated">—</span>
+    </div>
+
+  </div>
+
+  <div id="error-content" style="display:none"></div>
+</div>
+
+<script>
+let CONFIG = { token: '', account: '', name: '', period: 'last_7d' };
+
+function showConfig() {
+  document.getElementById('config-panel').style.display = 'flex';
+}
+function hideConfig() {
+  document.getElementById('config-panel').style.display = 'none';
+}
+
+function setStatus(state, text) {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  dot.className = 'status-dot ' + state;
+  txt.textContent = text;
+}
+
+function fmt(n) {
+  if (!n) return '0';
+  const num = parseFloat(n);
+  if (num >= 1000000) return (num/1000000).toFixed(1)+'M';
+  if (num >= 1000) return (num/1000).toFixed(1)+'k';
+  return num.toLocaleString('pt-BR');
+}
+
+function fmtBRL(n) {
+  if (!n) return 'R$0';
+  return 'R$' + parseFloat(n).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function periodLabel(p) {
+  const map = {
+    'last_7d': 'Últimos 7 dias',
+    'last_14d': 'Últimos 14 dias',
+    'last_30d': 'Últimos 30 dias',
+    'this_month': 'Mês atual',
+    'last_month': 'Mês passado'
+  };
+  return map[p] || p;
+}
+
+async function startReport() {
+  CONFIG.token = document.getElementById('input-token').value.trim();
+  CONFIG.account = document.getElementById('input-account').value.trim();
+  CONFIG.name = document.getElementById('input-name').value.trim() || 'Cliente';
+  CONFIG.period = document.getElementById('input-period').value;
+
+  if (!CONFIG.token || !CONFIG.account) {
+    alert('Preencha o token e o ID da conta para continuar.');
+    return;
+  }
+
+  if (!CONFIG.account.startsWith('act_')) {
+    CONFIG.account = 'act_' + CONFIG.account.replace('act_','');
+  }
+
+  hideConfig();
+  await fetchAndRender();
+}
+
+async function refreshData() {
+  if (!CONFIG.token) { showConfig(); return; }
+  await fetchAndRender();
+}
+
+async function fetchAndRender() {
+  document.getElementById('loading-overlay').style.display = 'flex';
+  document.getElementById('report-content').style.display = 'none';
+  document.getElementById('error-content').style.display = 'none';
+  setStatus('', 'atualizando...');
+
+  try {
+    const base = 'https://graph.facebook.com/v19.0';
+    const fields = 'reach,impressions,frequency,clicks,ctr,cpc,cpm,spend,actions,cost_per_action_type';
+    const insightUrl = `${base}/${CONFIG.account}/insights?fields=${fields}&date_preset=${CONFIG.period}&access_token=${CONFIG.token}`;
+
+    const campUrl = `${base}/${CONFIG.account}/campaigns?fields=name,status,insights.date_preset(${CONFIG.period}){spend,actions,cost_per_action_type,impressions}&limit=10&access_token=${CONFIG.token}`;
+
+    const accountUrl = `${base}/${CONFIG.account}?fields=name&access_token=${CONFIG.token}`;
+
+    const [insightRes, campRes, accountRes] = await Promise.all([
+      fetch(insightUrl), fetch(campUrl), fetch(accountUrl)
+    ]);
+
+    const insightData = await insightRes.json();
+    const campData = await campRes.json();
+    const accountData = await accountRes.json();
+
+    if (insightData.error) throw new Error(insightData.error.message);
+
+    const d = insightData.data?.[0] || {};
+    renderReport(d, campData.data || [], accountData.name || CONFIG.name);
+    setStatus('live', 'dados ao vivo · ' + new Date().toLocaleTimeString('pt-BR'));
+    document.getElementById('report-content').style.display = 'block';
+
+  } catch (err) {
+    console.error(err);
+    setStatus('error', 'erro na conexão');
+    document.getElementById('error-content').innerHTML = `
+      <div class="error-box">
+        <h3>Erro ao conectar com o Meta Ads</h3>
+        <p>Mensagem: <code>${err.message}</code><br><br>
+        Verifique se o token está correto e tem permissão <code>ads_read</code>.<br>
+        <a href="https://developers.facebook.com/tools/explorer/" target="_blank" style="color:var(--accent)">→ Gerar novo token</a></p>
+      </div>`;
+    document.getElementById('error-content').style.display = 'block';
+  } finally {
+    document.getElementById('loading-overlay').style.display = 'none';
+  }
+}
+
+function getAction(actions, types) {
+  if (!actions) return null;
+  for (const t of types) {
+    const a = actions.find(x => x.action_type === t);
+    if (a) return a.value;
+  }
+  return null;
+}
+
+function getCPP(costs, types) {
+  if (!costs) return null;
+  for (const t of types) {
+    const a = costs.find(x => x.action_type === t);
+    if (a) return a.value;
+  }
+  return null;
+}
+
+function renderReport(d, campaigns, accountName) {
+  // Header
+  document.getElementById('r-client').textContent = CONFIG.name || accountName;
+  document.getElementById('r-account').textContent = accountName + ' · ' + CONFIG.account;
+  document.getElementById('r-period').textContent = periodLabel(CONFIG.period);
+  document.getElementById('r-generated').textContent = 'Gerado em ' + new Date().toLocaleString('pt-BR');
+
+  // Métricas
+  document.getElementById('r-reach').textContent = fmt(d.reach);
+  document.getElementById('r-impressions').textContent = fmt(d.impressions);
+  document.getElementById('r-frequency').textContent = d.frequency ? parseFloat(d.frequency).toFixed(1)+'x' : '—';
+  document.getElementById('r-clicks').textContent = fmt(d.clicks);
+  document.getElementById('r-ctr').textContent = d.ctr ? parseFloat(d.ctr).toFixed(2)+'%' : '—';
+  document.getElementById('r-cpc').textContent = d.cpc ? fmtBRL(d.cpc) : '—';
+  document.getElementById('r-cpm').textContent = d.cpm ? fmtBRL(d.cpm) : '—';
+  document.getElementById('r-spend').textContent = fmtBRL(d.spend);
+
+  // Resultado principal
+  const resultTypes = ['purchase','lead','complete_registration','contact','subscribe','initiate_checkout'];
+  const resultLabels = {'purchase':'Compras','lead':'Leads','complete_registration':'Cadastros','contact':'Contatos','subscribe':'Inscrições','initiate_checkout':'Checkouts'};
+  const resultVal = getAction(d.actions, resultTypes);
+  const resultType = d.actions?.find(x => resultTypes.includes(x.action_type))?.action_type;
+  const cpp = getCPP(d.cost_per_action_type, resultTypes);
+
+  document.getElementById('r-result-label').textContent = resultVal ? fmt(resultVal) + ' ' + (resultLabels[resultType]||'Resultados') : fmt(d.clicks) + ' Cliques';
+  document.getElementById('r-cpp').textContent = cpp ? fmtBRL(cpp) : (d.cpc ? fmtBRL(d.cpc) : '—');
+
+  // Campanhas
+  const tbody = document.getElementById('r-camp-body');
+  if (campaigns.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhuma campanha encontrada</td></tr>';
+  } else {
+    tbody.innerHTML = campaigns.map(c => {
+      const ins = c.insights?.data?.[0] || {};
+      const cRes = getAction(ins.actions, resultTypes);
+      const cCPP = getCPP(ins.cost_per_action_type, resultTypes);
+      const isActive = c.status === 'ACTIVE';
+      return `<tr>
+        <td>${c.name}</td>
+        <td><span class="camp-status ${isActive?'s-active':'s-paused'}">${isActive?'ativo':'pausado'}</span></td>
+        <td>${fmtBRL(ins.spend)}</td>
+        <td>${cRes ? fmt(cRes) : (fmt(ins.impressions)||'—')}</td>
+        <td>${cCPP ? fmtBRL(cCPP) : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+// DEMO com dados do print do usuário
+function loadDemo() {
+  hideConfig();
+  CONFIG.name = 'Zerah — Demo';
+  CONFIG.period = 'last_14d';
+
+  const demoData = {
+    reach: '14950', impressions: '19410', frequency: '1.3',
+    clicks: '1063', ctr: '5.47', cpc: '0.28', cpm: '15.49', spend: '300.69',
+    actions: [{action_type:'initiate_checkout', value:'250'}],
+    cost_per_action_type: [{action_type:'initiate_checkout', value:'1.20'}]
+  };
+
+  const demoCamps = [
+    { name: 'Vendas — Criativo Principal', status: 'ACTIVE', insights: { data: [{ spend:'180.00', actions:[{action_type:'initiate_checkout',value:'160'}], cost_per_action_type:[{action_type:'initiate_checkout',value:'1.12'}] }] } },
+    { name: 'Remarketing — Visitantes', status: 'ACTIVE', insights: { data: [{ spend:'120.69', actions:[{action_type:'initiate_checkout',value:'90'}], cost_per_action_type:[{action_type:'initiate_checkout',value:'1.34'}] }] } },
+  ];
+
+  renderReport(demoData, demoCamps, 'Zerah');
+  setStatus('live', 'modo demonstração');
+  document.getElementById('report-content').style.display = 'block';
+  document.getElementById('r-period').textContent = 'Últimos 14 dias';
+  document.getElementById('r-generated').textContent = 'Demonstração · dados reais do seu cliente';
+}
+</script>
+</body>
+</html>
