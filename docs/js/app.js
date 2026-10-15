@@ -7,12 +7,14 @@ import home from './ui/views/home.js';
 import library from './ui/views/library.js';
 import item from './ui/views/item.js';
 import historico from './ui/views/history.js';
+import estatisticas from './ui/views/stats.js';
 
 const routes = {
   inicio: home,
   biblioteca: library,
   item,
   historico,
+  estatisticas,
 };
 
 const main = document.getElementById('view');

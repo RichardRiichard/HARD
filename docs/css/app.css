@@ -16,7 +16,8 @@
   --danger-soft: #fde8e6;
   --warn: #9a6200;
   --warn-soft: #fdf1d8;
-  --type-livro: #0f6e66;
+  /* Cores por tipo: validadas para daltonismo e contraste (claro e escuro). */
+  --type-livro: #008673;
   --type-artigo: #b0661a;
   --type-blog: #6a55c9;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 16px rgb(0 0 0 / 0.06);
@@ -42,9 +43,9 @@
     --danger-soft: #3a1c19;
     --warn: #f0b44c;
     --warn-soft: #382a10;
-    --type-livro: #4cc1b2;
-    --type-artigo: #e39a4f;
-    --type-blog: #a594f2;
+    --type-livro: #2ea595;
+    --type-artigo: #cc7f35;
+    --type-blog: #8a77e0;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
   }
 }
@@ -951,6 +952,15 @@ a:focus-visible {
 
 .type-bar-label b {
   font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--c);
+  margin-right: 8px;
 }
 
 .type-bar {
