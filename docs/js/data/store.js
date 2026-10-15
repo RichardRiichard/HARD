@@ -14,7 +14,7 @@ export const state = {
 
 const listeners = new Set();
 
-/** Inscreve uma função chamada após cada alteração. detail.source: 'user' | 'restore' */
+/** Inscreve uma função chamada após cada alteração. detail.source: 'user' | 'restore' | 'import' */
 export function onChange(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -43,9 +43,18 @@ export async function init() {
   state.dataUpdatedAt = dataUpdatedAt || null;
 }
 
+/**
+ * Carimbo da alteração: sempre maior que o anterior, mesmo se o relógio deste aparelho
+ * estiver atrás do aparelho que gerou o backup restaurado.
+ */
+export function nextStamp(previous, nowMs = Date.now()) {
+  const prev = previous ? Date.parse(previous) : 0;
+  return new Date(Math.max(nowMs, (Number.isFinite(prev) ? prev : 0) + 1)).toISOString();
+}
+
 /** Aplica um lote de mudanças: { items?: [...], entries?: [...], deleteItems?: [ids], deleteEntries?: [ids] } */
 export async function commit({ items = [], entries = [], deleteItems = [], deleteEntries = [], settings } = {}) {
-  const now = new Date().toISOString();
+  const now = nextStamp(state.dataUpdatedAt);
   const ops = [
     ...items.map((put) => ({ store: 'items', put })),
     ...entries.map((put) => ({ store: 'entries', put })),
@@ -74,16 +83,19 @@ export function saveSettings(patch) {
   return commit({ settings: normalizeSettings({ ...state.settings, ...patch }) });
 }
 
-/** Substitui tudo (restaurar/importar). Mantém o dataUpdatedAt do backup. */
-export async function replaceAll({ items, entries, settings, dataUpdatedAt }) {
+/**
+ * Substitui tudo. source 'restore' (backup do Drive) mantém o dataUpdatedAt do backup;
+ * source 'import' (arquivo) conta como alteração nova deste aparelho.
+ */
+export async function replaceAll({ items, entries, settings, dataUpdatedAt }, { source = 'restore' } = {}) {
   const normalized = normalizeSettings(settings);
-  const stamp = dataUpdatedAt || new Date().toISOString();
+  const stamp = source === 'restore' && dataUpdatedAt ? dataUpdatedAt : nextStamp(state.dataUpdatedAt);
   await db.replaceAll({ items, entries, kv: { settings: normalized, dataUpdatedAt: stamp } });
   state.items = items;
   state.entries = entries;
   state.settings = normalized;
   state.dataUpdatedAt = stamp;
-  emit({ source: 'restore' });
+  emit({ source });
 }
 
 // ---------- Consultas ----------

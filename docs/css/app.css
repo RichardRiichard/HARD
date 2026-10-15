@@ -181,8 +181,10 @@ main {
 
 .banner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 8px 10px;
   margin: 4px 0 8px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
@@ -196,7 +198,7 @@ main {
 }
 
 .banner p {
-  flex: 1;
+  flex: 1 1 180px;
   margin: 0;
 }
 

@@ -8,6 +8,9 @@ import library from './ui/views/library.js';
 import item from './ui/views/item.js';
 import historico from './ui/views/history.js';
 import estatisticas from './ui/views/stats.js';
+import config from './ui/views/settings.js';
+import * as backupService from './services/backup.js';
+import { renderBanner, bindBanner } from './ui/banner.js';
 
 const routes = {
   inicio: home,
@@ -15,6 +18,7 @@ const routes = {
   item,
   historico,
   estatisticas,
+  config,
 };
 
 const main = document.getElementById('view');
@@ -84,6 +88,18 @@ async function start() {
   window.addEventListener('hashchange', () => render());
   store.onChange(() => render({ keepScroll: true }));
   render();
+
+  const banner = document.getElementById('banner');
+  bindBanner(banner);
+  backupService.onBackupChange(() => {
+    renderBanner(banner);
+    if (current.name === 'config') render({ keepScroll: true });
+  });
+  backupService.init();
+  renderBanner(banner);
+
+  // Pede ao navegador para não apagar os dados locais quando faltar espaço.
+  navigator.storage?.persist?.().catch(() => {});
 }
 
 window.addEventListener('unhandledrejection', (e) => {
