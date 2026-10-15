@@ -88,6 +88,11 @@ export default {
   title: 'Configurações',
   tab: null,
   back: () => '#/inicio',
+  /** Atualiza só o bloco do Drive (não apaga o que está sendo digitado no formulário). */
+  refresh(main) {
+    const el = $('#drive-section', main);
+    if (el) setHtml(el, driveSection());
+  },
   render(main) {
     setHtml(
       main,
@@ -98,7 +103,7 @@ export default {
 
         <section class="settings-group">
           <h2>Backup no Google Drive</h2>
-          ${driveSection()}
+          <div id="drive-section">${driveSection()}</div>
         </section>
 
         <section class="settings-group">

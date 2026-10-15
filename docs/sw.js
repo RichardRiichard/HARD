@@ -3,7 +3,7 @@
 const VERSION = '1.0.0';
 const APP_CACHE = `leituras-app-${VERSION}`;
 const COVERS_CACHE = 'leituras-capas';
-const MAX_COVERS = 300;
+const MAX_COVERS = 100;
 
 // Todos os arquivos do app (o teste tests/sw.test.js garante que a lista está completa).
 const PRECACHE = [
@@ -99,13 +99,22 @@ async function cacheFirst(request) {
   return cached || fetch(request);
 }
 
+/**
+ * Capas: cache só de respostas com CORS. Respostas "opacas" (sem CORS) ocupariam ~7 MB de cota
+ * cada no Chrome e poderiam pressionar o espaço dos seus dados; essas só aparecem quando há internet.
+ */
 async function coverCacheFirst(request) {
   const cache = await caches.open(COVERS_CACHE);
-  const cached = await cache.match(request);
+  const cached = await cache.match(request.url);
   if (cached) return cached;
-  const response = await fetch(request);
-  if (response.ok || response.type === 'opaque') {
-    await cache.put(request, response.clone());
+  let response;
+  try {
+    response = await fetch(request.url, { mode: 'cors', credentials: 'omit' });
+  } catch {
+    return fetch(request);
+  }
+  if (response.ok) {
+    await cache.put(request.url, response.clone());
     const keys = await cache.keys();
     for (const key of keys.slice(0, Math.max(0, keys.length - MAX_COVERS))) await cache.delete(key);
   }

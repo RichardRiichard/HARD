@@ -61,6 +61,7 @@ export default {
   tab: 'biblioteca',
   render(main, param) {
     if (param && (param in STATUS_FILTERS || param in TYPE_FILTERS)) {
+      Object.assign(filters, { type: 'todos', status: 'todos', q: '' });
       if (param in STATUS_FILTERS) filters.status = param;
       else filters.type = param;
       history.replaceState(null, '', '#/biblioteca');

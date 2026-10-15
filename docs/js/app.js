@@ -23,6 +23,7 @@ const routes = {
 
 const main = document.getElementById('view');
 let current = { name: null, param: null };
+let inAppNavigations = 0;
 
 function parseHash() {
   const [, name = 'inicio', param = null] = location.hash.split('/');
@@ -85,7 +86,17 @@ async function start() {
     );
     return;
   }
-  window.addEventListener('hashchange', () => render());
+  window.addEventListener('hashchange', () => {
+    inAppNavigations += 1;
+    render();
+  });
+  // Voltar: retorna à tela anterior do app; se o app abriu direto nesta tela, vai para o destino padrão.
+  $('#back-btn').addEventListener('click', (e) => {
+    if (inAppNavigations > 0) {
+      e.preventDefault();
+      history.back();
+    }
+  });
   store.onChange(() => render({ keepScroll: true }));
   render();
 
@@ -93,7 +104,7 @@ async function start() {
   bindBanner(banner);
   backupService.onBackupChange(() => {
     renderBanner(banner);
-    if (current.name === 'config') render({ keepScroll: true });
+    if (current.name === 'config') routes.config.refresh(main);
   });
   backupService.init();
   renderBanner(banner);
