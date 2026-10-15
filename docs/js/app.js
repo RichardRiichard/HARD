@@ -6,11 +6,13 @@ import { toast } from './ui/overlay.js';
 import home from './ui/views/home.js';
 import library from './ui/views/library.js';
 import item from './ui/views/item.js';
+import historico from './ui/views/history.js';
 
 const routes = {
   inicio: home,
   biblioteca: library,
   item,
+  historico,
 };
 
 const main = document.getElementById('view');

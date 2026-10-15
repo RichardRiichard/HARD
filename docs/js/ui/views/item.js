@@ -13,6 +13,7 @@ import { changeStatus, deleteItem, markRead, addManualEntry, saveProgress } from
 import { openArticleForm } from '../sheets/article-form.js';
 import { openBookForm } from '../sheets/book-form.js';
 import { openProgressSheet } from '../sheets/progress.js';
+import { openEntrySheet } from '../sheets/entry.js';
 
 function stat(value, label) {
   return html`<div class="stat"><b>${value}</b><span>${label}</span></div>`;
@@ -129,7 +130,7 @@ export default {
         await deleteItem(item);
         location.hash = '#/biblioteca';
       },
-      'edit-entry': (el) => this.openEntry(el.dataset.id),
+      'edit-entry': (el) => openEntrySheet(el.dataset.id),
       progress: () => openProgressSheet(item),
       finish: () => this.finish(item),
     });
@@ -175,5 +176,4 @@ export default {
     if (item.type === 'livro') openBookForm({ item });
     else openArticleForm({ item });
   },
-  openEntry() {},
 };

@@ -882,7 +882,6 @@ a:focus-visible {
   font-weight: 700;
   color: var(--muted);
   margin: 0 2px 8px;
-  text-transform: capitalize;
 }
 
 /* ---------- Gráficos ---------- */

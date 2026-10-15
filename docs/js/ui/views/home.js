@@ -10,7 +10,7 @@ import { cover, progressBar, percent, subtitle, entryRow, typeDot } from '../com
 import { openAddChooser } from '../sheets/add.js';
 import { markRead } from '../actions.js';
 import { openProgressSheet } from '../sheets/progress.js';
-import itemView from './item.js';
+import { openEntrySheet } from '../sheets/entry.js';
 
 export function hero() {
   const t = today();
@@ -115,7 +115,7 @@ export default {
       add: () => openAddChooser(),
       progress: (el) => openProgressSheet(store.getItem(el.dataset.id)),
       'mark-read': (el) => markRead(store.getItem(el.dataset.id)),
-      'edit-entry': (el) => itemView.openEntry(el.dataset.id),
+      'edit-entry': (el) => openEntrySheet(el.dataset.id),
     });
   },
 };
