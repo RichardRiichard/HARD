@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Leituras</title>
+    <meta name="description" content="Registre livros, artigos e posts lidos e veja o tempo total de leitura." />
+    <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Leituras" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="css/app.css" />
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a href="#/inicio" class="icon-btn" id="back-btn" hidden aria-label="Voltar"></a>
+      <h1 id="page-title">Leituras</h1>
+      <a href="#/config" class="icon-btn" id="settings-btn" aria-label="Configurações"></a>
+    </header>
+    <div class="banner-area" id="banner" aria-live="polite"></div>
+    <main id="view" tabindex="-1">
+      <noscript><p>Este app precisa de JavaScript ativado.</p></noscript>
+    </main>
+    <nav class="tabbar" aria-label="Navegação principal">
+      <a href="#/inicio" data-tab="inicio"><span data-icon="home"></span>Início</a>
+      <a href="#/biblioteca" data-tab="biblioteca"><span data-icon="library"></span>Biblioteca</a>
+      <a href="#/historico" data-tab="historico"><span data-icon="history"></span>Histórico</a>
+      <a href="#/estatisticas" data-tab="estatisticas"><span data-icon="stats"></span>Estatísticas</a>
+    </nav>
+    <div class="toasts" id="toasts"></div>
+  </body>
+</html>
