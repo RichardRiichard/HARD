@@ -93,6 +93,10 @@ export function toast(message, { kind = 'info', duration = 3200, action } = {}) 
     };
     el.append(btn);
   }
+  // No máximo 2 avisos visíveis: o mais antigo sai.
+  const visible = [...root().querySelectorAll('.toast:not(.hide)')];
+  if (visible.length >= 2) visible[0].dispatchEvent(new Event('dismiss'));
+  el.addEventListener('dismiss', () => dismiss());
   root().append(el);
   requestAnimationFrame(() => el.classList.add('show'));
   let timer = duration > 0 ? setTimeout(dismiss, duration) : null;

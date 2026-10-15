@@ -12,6 +12,7 @@ import { confirmDialog } from '../overlay.js';
 import { changeStatus, deleteItem, markRead, addManualEntry, saveProgress } from '../actions.js';
 import { openArticleForm } from '../sheets/article-form.js';
 import { openBookForm } from '../sheets/book-form.js';
+import { openProgressSheet } from '../sheets/progress.js';
 
 function stat(value, label) {
   return html`<div class="stat"><b>${value}</b><span>${label}</span></div>`;
@@ -129,7 +130,7 @@ export default {
         location.hash = '#/biblioteca';
       },
       'edit-entry': (el) => this.openEntry(el.dataset.id),
-      progress: () => this.openProgress(item),
+      progress: () => openProgressSheet(item),
       finish: () => this.finish(item),
     });
 
@@ -170,11 +171,9 @@ export default {
     return false;
   },
 
-  // Preenchidos nas próximas etapas (livros, progresso, histórico).
   openEdit(item) {
     if (item.type === 'livro') openBookForm({ item });
     else openArticleForm({ item });
   },
-  openProgress() {},
   openEntry() {},
 };

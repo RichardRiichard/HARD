@@ -9,6 +9,7 @@ import { today, formatDayRelative } from '../../core/dates.js';
 import { cover, progressBar, percent, subtitle, entryRow, typeDot } from '../components.js';
 import { openAddChooser } from '../sheets/add.js';
 import { markRead } from '../actions.js';
+import { openProgressSheet } from '../sheets/progress.js';
 import itemView from './item.js';
 
 export function hero() {
@@ -112,7 +113,7 @@ export default {
     );
     onAction(main, {
       add: () => openAddChooser(),
-      progress: (el) => itemView.openProgress(store.getItem(el.dataset.id)),
+      progress: (el) => openProgressSheet(store.getItem(el.dataset.id)),
       'mark-read': (el) => markRead(store.getItem(el.dataset.id)),
       'edit-entry': (el) => itemView.openEntry(el.dataset.id),
     });
