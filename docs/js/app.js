@@ -102,9 +102,46 @@ async function start() {
   navigator.storage?.persist?.().catch(() => {});
 }
 
+/** Service worker (offline) com aviso quando houver versão nova. */
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  // Só recarrega quando o usuário pediu a atualização (na primeira visita o SW assume sem recarregar).
+  let updateRequested = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!updateRequested) return;
+    updateRequested = false;
+    location.reload();
+  });
+  const offerUpdate = (worker) => {
+    toast('Nova versão do app disponível.', {
+      duration: 0,
+      action: {
+        label: 'Atualizar',
+        run: () => {
+          updateRequested = true;
+          worker.postMessage('SKIP_WAITING');
+        },
+      },
+    });
+  };
+  navigator.serviceWorker
+    .register('sw.js')
+    .then((reg) => {
+      if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const worker = reg.installing;
+        worker?.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(worker);
+        });
+      });
+    })
+    .catch((err) => console.warn('Service worker não registrado:', err));
+}
+
 window.addEventListener('unhandledrejection', (e) => {
   console.error(e.reason);
   toast(e.reason?.message || 'Erro inesperado', { kind: 'error' });
 });
 
 start();
+registerServiceWorker();
