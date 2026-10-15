@@ -42,10 +42,10 @@ export function openSheet({ title, content, onClose, className = '' }) {
   return { el: dialog, body, close };
 }
 
-/** Confirmação. Resolve true/false. */
+/** Confirmação. Resolve true (confirmou), false (botão cancelar) ou null (fechou o painel). */
 export function confirmDialog({ title, message, confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', danger = false }) {
   return new Promise((resolve) => {
-    let answer = false;
+    let answer = null;
     const sheet = openSheet({
       title,
       className: 'sheet-small',

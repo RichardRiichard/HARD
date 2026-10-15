@@ -55,15 +55,19 @@ export function itemRow(item, minutes) {
   </a>`;
 }
 
-/** Linha de entrada do histórico. */
-export function entryRow(entry, item) {
+/** Linha de entrada do histórico. dateLabel opcional aparece antes do detalhe. */
+export function entryRow(entry, item, dateLabel = '') {
   const title = item ? item.title : 'Item apagado';
-  const detail =
+  const detail = [
+    dateLabel,
     entry.pages != null
       ? `${entry.pages} pág.${entry.pageFrom != null ? ` (p. ${entry.pageFrom} → ${entry.pageTo})` : ''}`
       : item
         ? TYPES[item.type]
-        : '';
+        : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return html`<button type="button" class="row" data-action="edit-entry" data-id="${entry.id}">
     ${item ? cover(item) : typeDot('artigo')}
     <div class="row-main">
