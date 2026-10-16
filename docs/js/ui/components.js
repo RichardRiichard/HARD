@@ -5,8 +5,9 @@ import { formatDuration } from '../core/calc.js';
 import { STATUS, TYPES } from '../core/progress.js';
 
 export function cover(item, size = '') {
-  if (item.type !== 'livro') return typeDot(item.type, size);
-  return html`<div class="cover ${size}" style="--hue:${hueOf(item.title)}" aria-hidden="true">
+  if (item.type !== 'livro' && !item.coverUrl) return typeDot(item.type, size);
+  const shape = item.type === 'livro' ? '' : 'thumb';
+  return html`<div class="cover ${size} ${shape}" style="--hue:${hueOf(item.title)}" aria-hidden="true">
     ${initials(item.title)}${item.coverUrl ? html`<img src="${item.coverUrl}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}
   </div>`;
 }

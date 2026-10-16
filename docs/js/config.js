@@ -1,5 +1,9 @@
-// Configuração do backup no Google Drive.
-// Cole entre as aspas o "ID do cliente" OAuth criado no Google Cloud Console
-// (passo a passo no README, seção "Configurar o backup no Google Drive").
-// Vazio = o backup no Drive fica desativado; o resto do app funciona normalmente.
+// Configuração dos serviços do Google (passo a passo no README).
+// Vazio = o recurso fica desativado; o resto do app funciona normalmente.
+
+// Backup no Google Drive: "ID do cliente" OAuth (termina em .apps.googleusercontent.com).
 export const GOOGLE_CLIENT_ID = '740657322302-9bp0rppniio68dkuaqnbv4ahpij4ae8m.apps.googleusercontent.com';
+
+// Busca no Google Books: "chave de API" (começa com AIza). Sem ela, o Google Books
+// usa uma cota gratuita compartilhada por todo mundo, que costuma acabar todo dia.
+export const GOOGLE_BOOKS_API_KEY = '';

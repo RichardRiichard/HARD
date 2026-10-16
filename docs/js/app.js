@@ -11,6 +11,8 @@ import estatisticas from './ui/views/stats.js';
 import config from './ui/views/settings.js';
 import * as backupService from './services/backup.js';
 import { renderBanner, bindBanner } from './ui/banner.js';
+import { openArticleForm } from './ui/sheets/article-form.js';
+import { firstUrl } from './services/link-info.js';
 
 const routes = {
   inicio: home,
@@ -108,9 +110,25 @@ async function start() {
   });
   backupService.init();
   renderBanner(banner);
+  handleShare();
 
   // Pede ao navegador para não apagar os dados locais quando faltar espaço.
   navigator.storage?.persist?.().catch(() => {});
+}
+
+/**
+ * "Compartilhar → Leituras" (Android): o app abre com ?share_url=…&share_title=…&share_text=…
+ * e já mostra o formulário de post preenchido.
+ */
+function handleShare() {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('share_url') && !params.has('share_text') && !params.has('share_title')) return;
+  const text = params.get('share_text') || '';
+  const url = params.get('share_url') || firstUrl(text) || firstUrl(params.get('share_title'));
+  let title = (params.get('share_title') || '').trim();
+  if (!title || firstUrl(title)) title = '';
+  history.replaceState(null, '', `${location.pathname}#/inicio`);
+  openArticleForm({ type: 'blog', prefill: { url, title } });
 }
 
 /** Service worker (offline) com aviso quando houver versão nova. */

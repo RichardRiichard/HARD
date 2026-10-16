@@ -4,6 +4,7 @@ import { icon } from '../icons.js';
 import { openSheet } from '../overlay.js';
 import { openArticleForm } from './article-form.js';
 import { openBookSearch } from './book-search.js';
+import { openPdfImport } from './pdf-import.js';
 
 export function openAddChooser() {
   const sheet = openSheet({
@@ -16,11 +17,15 @@ export function openAddChooser() {
       </button>
       <button type="button" class="choice" data-kind="artigo">
         <span class="type-dot artigo">${icon('artigo')}</span>
-        <div><b>Artigo</b><span>Tempo informado, tamanho ou texto colado</span></div>
+        <div><b>Artigo</b><span>Tempo em minutos, páginas, tamanho ou texto colado</span></div>
       </button>
       <button type="button" class="choice" data-kind="blog">
         <span class="type-dot blog">${icon('blog')}</span>
-        <div><b>Post de blog</b><span>Mesmas opções do artigo</span></div>
+        <div><b>Post de blog</b><span>Cole o link do Substack e os dados vêm sozinhos</span></div>
+      </button>
+      <button type="button" class="choice" data-kind="pdf">
+        <span class="type-dot livro">${icon('page')}</span>
+        <div><b>PDF</b><span>Lê título e páginas do arquivo (livro ou artigo)</span></div>
       </button>
     </div>`,
   });
@@ -29,6 +34,7 @@ export function openAddChooser() {
     if (!btn) return;
     sheet.close();
     if (btn.dataset.kind === 'livro') openBookSearch();
+    else if (btn.dataset.kind === 'pdf') openPdfImport();
     else openArticleForm({ type: btn.dataset.kind });
   });
 }

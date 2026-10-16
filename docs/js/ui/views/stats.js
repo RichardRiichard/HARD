@@ -1,4 +1,4 @@
-// Estatísticas: total, por tipo, por semana/mês, páginas, concluídos e sequência.
+// Estatísticas: total, ritmo, por tipo, por semana/mês, páginas, onde foi o tempo e concluídos.
 import { html, setHtml, $, onAction } from '../dom.js';
 import { icon } from '../icons.js';
 import * as store from '../../data/store.js';
@@ -10,11 +10,13 @@ import {
   minutesByType,
   byWeek,
   byMonth,
-  streak,
+  pace,
+  topItems,
+  topSources,
+  entriesInPeriod,
   completedSummary,
-  minutesByDay,
 } from '../../core/stats.js';
-import { today, addDays, weekStart, formatWeekShort, formatMonthShort, formatMonthLong, formatDateShort } from '../../core/dates.js';
+import { today, addDays, formatWeekShort, formatMonthShort, formatMonthLong, formatDateShort } from '../../core/dates.js';
 import { barChart, bindChart } from '../chart.js';
 
 let period = 'semana';
@@ -95,21 +97,55 @@ function doneTable(t) {
   </table>`;
 }
 
-/** Calendário das últimas 16 semanas (intensidade = minutos do dia). */
-function heatmap(t) {
-  const days = minutesByDay(state.entries);
-  const start = addDays(weekStart(t), -7 * 15);
-  const cells = [];
-  for (let i = 0; i < 16 * 7; i++) {
-    const d = addDays(start, i);
-    const m = days.get(d) || 0;
-    const level = d > t ? 'future' : m === 0 ? '' : m < 15 ? 'l1' : m < 45 ? 'l2' : 'l3';
-    cells.push(html`<i class="${level}" title="${formatDateShort(d)}: ${formatDuration(m)}"></i>`);
-  }
-  return html`<div class="heatmap" role="img" aria-label="Dias com leitura nas últimas 16 semanas">${cells}</div>
-    <div class="small muted" style="display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:6px">
-      Menos <span class="heatmap" style="display:inline-grid;grid-template-rows:1fr;width:64px"><i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i></span> Mais
-    </div>`;
+const WHERE_PERIODS = { '30d': '30 dias', ano: 'Este ano', sempre: 'Sempre' };
+const WHERE_TABS = { leituras: 'Leituras', autor: 'Autores', site: 'Sites' };
+const where = { period: 'sempre', tab: 'leituras', expanded: false };
+const TYPE_LABEL = { livro: 'Livro', artigo: 'Artigo', blog: 'Post' };
+
+function rankList(rows, total) {
+  if (!rows.length) return html`<p class="small muted" style="margin:0">Nada neste período.</p>`;
+  const max = rows[0].minutes || 1;
+  return html`<div class="type-bars">
+    ${rows.map((r, i) => {
+      const pct = total ? Math.round((100 * r.minutes) / total) : 0;
+      const sub = r.type ? TYPE_LABEL[r.type] : `${r.items} ${r.items === 1 ? 'leitura' : 'leituras'}`;
+      return html`<div>
+        <div class="type-bar-label">
+          <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="muted num">${i + 1}.</span> ${r.label}</span>
+          <span style="flex:none"><b>${formatDuration(r.minutes)}</b> <span class="muted">· ${pct}%</span></span>
+        </div>
+        <div class="type-bar" style="--c:var(--accent)"><i style="width:${(100 * r.minutes) / max}%"></i></div>
+        <div class="small muted" style="margin-top:2px">${sub}</div>
+      </div>`;
+    })}
+  </div>`;
+}
+
+function whereSection(t) {
+  const byId = store.itemsById();
+  const entries = entriesInPeriod(state.entries, where.period, t);
+  const total = totalMinutes(entries);
+  const limit = where.expanded ? 50 : 10;
+  const rows = where.tab === 'leituras' ? topItems(entries, byId, limit) : topSources(entries, byId, where.tab, limit);
+  const all = where.tab === 'leituras' ? topItems(entries, byId, 1e6) : topSources(entries, byId, where.tab, 1e6);
+  const distinct = new Set(entries.map((e) => e.itemId)).size;
+  const seg = (group, options, active) => html`<div class="seg" role="group" style="margin-bottom:8px">
+    ${Object.entries(options).map(
+      ([k, label]) => html`<button type="button" data-action="where" data-group="${group}" data-value="${k}" aria-pressed="${String(k === active)}">${label}</button>`,
+    )}
+  </div>`;
+  return html`<section class="section card" id="where">
+    <div class="section-head"><h2>Onde foi seu tempo</h2></div>
+    ${seg('period', WHERE_PERIODS, where.period)}
+    ${seg('tab', WHERE_TABS, where.tab)}
+    <p class="small muted" style="margin:4px 0 12px">${formatDuration(total)} em ${distinct} ${distinct === 1 ? 'leitura' : 'leituras'}${
+      where.tab !== 'leituras' ? ` · ${all.length} ${where.tab === 'autor' ? (all.length === 1 ? 'autor' : 'autores') : all.length === 1 ? 'site' : 'sites'}` : ''
+    }</p>
+    ${rankList(rows, total)}
+    ${all.length > 10
+      ? html`<button type="button" class="link-btn" data-action="where-more" style="margin-top:12px">${where.expanded ? 'Mostrar menos' : `Ver todos (${all.length})`}</button>`
+      : ''}
+  </section>`;
 }
 
 export default {
@@ -126,7 +162,7 @@ export default {
     }
     const t = today();
     const total = splitHours(totalMinutes(state.entries));
-    const s = streak(state.entries, t);
+    const p = pace(state.entries, t, 30);
     const series = timeSeries(t);
     const pages = pageSeries(t);
 
@@ -141,9 +177,9 @@ export default {
         </section>
 
         <div class="stat-grid" style="margin-top:10px">
+          ${stat(`${formatDecimal(p.perDay, 0)} min`, 'por dia, média de 30 dias')}
+          ${stat(p.changePct === null ? '—' : `${p.changePct > 0 ? '+' : p.changePct < 0 ? '−' : ''}${Math.abs(p.changePct)}%`, p.changePct === null ? 'sem dados dos 30 dias anteriores' : 'vs. 30 dias anteriores')}
           ${stat(formatInt(totalPages(state.entries)), 'páginas lidas')}
-          ${stat(s.current === 1 ? '1 dia' : `${s.current} dias`, 'sequência atual')}
-          ${stat(s.longest === 1 ? '1 dia' : `${s.longest} dias`, 'maior sequência')}
         </div>
 
         <section class="section card">
@@ -171,14 +207,11 @@ export default {
           ${dataTable(pages, 'Mês')}
         </section>
 
+        ${whereSection(t)}
+
         <section class="section card">
           <div class="section-head"><h2>Concluídos</h2></div>
           ${doneTable(t)}
-        </section>
-
-        <section class="section card">
-          <div class="section-head"><h2>Dias com leitura</h2><span class="small muted">16 semanas</span></div>
-          ${heatmap(t)}
         </section>`,
     );
 
@@ -187,6 +220,15 @@ export default {
     onAction(main, {
       period: (el) => {
         period = el.dataset.value;
+        this.render(main);
+      },
+      where: (el) => {
+        where[el.dataset.group] = el.dataset.value;
+        where.expanded = false;
+        this.render(main);
+      },
+      'where-more': () => {
+        where.expanded = !where.expanded;
         this.render(main);
       },
     });

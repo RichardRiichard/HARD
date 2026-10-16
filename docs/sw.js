@@ -1,6 +1,6 @@
 // Service worker: app funciona offline (exceto busca de livros e backup).
 // Ao publicar uma versão nova, aumente VERSION para os aparelhos baixarem os arquivos novos.
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const APP_CACHE = `leituras-app-${VERSION}`;
 const COVERS_CACHE = 'leituras-capas';
 const MAX_COVERS = 100;
@@ -29,6 +29,9 @@ const PRECACHE = [
   'js/services/books-api.js',
   'js/services/drive.js',
   'js/services/files.js',
+  'js/services/images.js',
+  'js/services/link-info.js',
+  'js/services/pdf.js',
   'js/ui/actions.js',
   'js/ui/banner.js',
   'js/ui/chart.js',
@@ -42,6 +45,7 @@ const PRECACHE = [
   'js/ui/sheets/book-form.js',
   'js/ui/sheets/book-search.js',
   'js/ui/sheets/entry.js',
+  'js/ui/sheets/pdf-import.js',
   'js/ui/sheets/progress.js',
   'js/ui/views/history.js',
   'js/ui/views/home.js',
@@ -50,6 +54,9 @@ const PRECACHE = [
   'js/ui/views/settings.js',
   'js/ui/views/stats.js',
 ];
+
+// Arquivos grandes baixados só quando usados (leitor de PDF) e guardados depois do primeiro uso.
+const LAZY = ['vendor/pdfjs/pdf.min.js', 'vendor/pdfjs/pdf.worker.min.js'];
 
 // Arquivos buscados primeiro na rede (para mudanças valerem sem trocar VERSION).
 const NETWORK_FIRST = ['js/config.js'];
@@ -94,9 +101,12 @@ async function networkFirst(request) {
   }
 }
 
-async function cacheFirst(request) {
+async function cacheFirst(request, store = false) {
   const cached = await caches.match(request, { ignoreSearch: true });
-  return cached || fetch(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (store && response.ok) (await caches.open(APP_CACHE)).put(request, response.clone());
+  return response;
 }
 
 /**
@@ -138,7 +148,7 @@ self.addEventListener('fetch', (event) => {
       return;
     }
     const path = url.pathname.slice(new URL(self.registration.scope).pathname.length);
-    event.respondWith(NETWORK_FIRST.includes(path) ? networkFirst(request) : cacheFirst(request));
+    event.respondWith(NETWORK_FIRST.includes(path) ? networkFirst(request) : cacheFirst(request, LAZY.includes(path)));
     return;
   }
 

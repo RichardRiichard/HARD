@@ -2,7 +2,7 @@
 // Entradas têm date 'AAAA-MM-DD' (já no fuso de São Paulo), então somas por
 // semana/mês não dependem do fuso do aparelho.
 
-import { addDays, addMonths, dayNumber, monthKey, weekStart, yearKey } from './dates.js';
+import { addDays, addMonths, monthKey, weekStart, yearKey } from './dates.js';
 import { round1 } from './calc.js';
 
 export function totalMinutes(entries) {
@@ -60,40 +60,81 @@ export function byMonth(entries, today, count = 12) {
   return bucketize(entries, monthKey, keys);
 }
 
-/** Minutos por dia (Map 'AAAA-MM-DD' -> minutos). */
-export function minutesByDay(entries) {
+/**
+ * Ritmo: média de minutos por dia nos últimos `days` dias (terminando hoje)
+ * e comparação com os `days` dias anteriores. changePct é null sem base de comparação.
+ */
+export function pace(entries, today, days = 30) {
+  const start = addDays(today, -(days - 1));
+  const prevStart = addDays(start, -days);
+  const prevEnd = addDays(start, -1);
+  const current = totalMinutes(entries.filter((e) => e.date >= start && e.date <= today));
+  const previous = totalMinutes(entries.filter((e) => e.date >= prevStart && e.date <= prevEnd));
+  return {
+    days,
+    total: current,
+    perDay: round1(current / days),
+    previousTotal: previous,
+    previousPerDay: round1(previous / days),
+    changePct: previous > 0 ? Math.round(((current - previous) / previous) * 100) : null,
+  };
+}
+
+/** Soma minutos por chave; `items` = quantas leituras diferentes entraram em cada linha. */
+function ranking(entries, keyOf, n) {
   const map = new Map();
-  for (const e of entries) map.set(e.date, (map.get(e.date) || 0) + (Number(e.minutes) || 0));
-  return map;
+  for (const e of entries) {
+    const key = keyOf(e);
+    if (!key) continue;
+    const row = map.get(key.id) || { ...key, minutes: 0, itemIds: new Set() };
+    row.minutes += Number(e.minutes) || 0;
+    row.itemIds.add(e.itemId);
+    map.set(key.id, row);
+  }
+  return [...map.values()]
+    .map(({ itemIds, ...r }) => ({ ...r, minutes: round1(r.minutes), items: itemIds.size }))
+    .sort((a, b) => b.minutes - a.minutes || a.label.localeCompare(b.label, 'pt-BR'))
+    .slice(0, n);
+}
+
+/** Entradas dentro de um período: '30d' (últimos 30 dias), 'ano' (ano atual) ou 'sempre'. */
+export function entriesInPeriod(entries, period, today) {
+  if (period === '30d') {
+    const start = addDays(today, -29);
+    return entries.filter((e) => e.date >= start && e.date <= today);
+  }
+  if (period === 'ano') return entries.filter((e) => yearKey(e.date) === yearKey(today));
+  return entries;
+}
+
+/** Itens com mais tempo lido: [{ id, label, type, minutes }] */
+export function topItems(entries, itemsById, n = 5) {
+  return ranking(
+    entries,
+    (e) => {
+      const item = itemsById.get(e.itemId);
+      return item ? { id: item.id, label: item.title, type: item.type } : null;
+    },
+    n,
+  );
 }
 
 /**
- * Sequência de dias seguidos com leitura.
- * current: termina hoje, ou ontem se hoje ainda não houve leitura (a sequência segue viva).
- * longest: maior sequência já registrada.
+ * Autores dos livros (kind 'autor') ou sites/publicações dos artigos e posts (kind 'site')
+ * com mais tempo lido: [{ id, label, minutes, items }]. Nomes iguais com maiúsculas diferentes se juntam.
  */
-export function streak(entries, today) {
-  const days = [...new Set(entries.map((e) => e.date))]
-    .map(dayNumber)
-    .sort((a, b) => a - b);
-  if (!days.length) return { current: 0, longest: 0 };
-
-  let longest = 1;
-  let run = 1;
-  for (let i = 1; i < days.length; i++) {
-    run = days[i] === days[i - 1] + 1 ? run + 1 : 1;
-    if (run > longest) longest = run;
-  }
-
-  const set = new Set(days);
-  const t = dayNumber(today);
-  let cursor = set.has(t) ? t : set.has(t - 1) ? t - 1 : null;
-  let current = 0;
-  while (cursor !== null && set.has(cursor)) {
-    current += 1;
-    cursor -= 1;
-  }
-  return { current, longest };
+export function topSources(entries, itemsById, kind, n = 5) {
+  return ranking(
+    entries,
+    (e) => {
+      const item = itemsById.get(e.itemId);
+      if (!item || (kind === 'autor') !== (item.type === 'livro')) return null;
+      const label = String((item.type === 'livro' ? item.author : item.site) || '').trim();
+      if (!label) return null;
+      return { id: label.toLocaleLowerCase('pt-BR'), label };
+    },
+    n,
+  );
 }
 
 /**
