@@ -2,7 +2,7 @@
 // Entradas têm date 'AAAA-MM-DD' (já no fuso de São Paulo), então somas por
 // semana/mês não dependem do fuso do aparelho.
 
-import { addDays, addMonths, dayNumber, monthKey, weekStart, yearKey } from './dates.js';
+import { addDays, addMonths, monthKey, weekStart, yearKey } from './dates.js';
 import { round1 } from './calc.js';
 
 export function totalMinutes(entries) {
@@ -80,38 +80,31 @@ export function pace(entries, today, days = 30) {
   };
 }
 
-/**
- * Previsão de término de um livro pelo ritmo de páginas DELE nos últimos `days` dias.
- * Se começou há menos tempo, a média usa só os dias desde a primeira leitura da janela.
- * Retorna null se já terminou; daysLeft null quando não há leitura recente para estimar.
- */
-export function finishForecast(book, entries, today, days = 30) {
-  const remaining = book.totalPages - (book.currentPage || 0);
-  if (remaining <= 0) return null;
-  const start = addDays(today, -(days - 1));
-  const recent = entries.filter((e) => e.itemId === book.id && e.date >= start && e.date <= today && e.pages > 0);
-  const pages = recent.reduce((sum, e) => sum + e.pages, 0);
-  if (!pages) return { remaining, pagesPerDay: 0, daysLeft: null, date: null };
-  const first = recent.reduce((min, e) => (e.date < min ? e.date : min), today);
-  const span = dayNumber(today) - dayNumber(first) + 1;
-  const perDay = pages / span;
-  const daysLeft = Math.ceil(remaining / perDay);
-  return { remaining, pagesPerDay: round1(perDay), daysLeft, date: addDays(today, daysLeft) };
-}
-
+/** Soma minutos por chave; `items` = quantas leituras diferentes entraram em cada linha. */
 function ranking(entries, keyOf, n) {
   const map = new Map();
   for (const e of entries) {
     const key = keyOf(e);
     if (!key) continue;
-    const row = map.get(key.id) || { ...key, minutes: 0 };
+    const row = map.get(key.id) || { ...key, minutes: 0, itemIds: new Set() };
     row.minutes += Number(e.minutes) || 0;
+    row.itemIds.add(e.itemId);
     map.set(key.id, row);
   }
   return [...map.values()]
-    .map((r) => ({ ...r, minutes: round1(r.minutes) }))
-    .sort((a, b) => b.minutes - a.minutes)
+    .map(({ itemIds, ...r }) => ({ ...r, minutes: round1(r.minutes), items: itemIds.size }))
+    .sort((a, b) => b.minutes - a.minutes || a.label.localeCompare(b.label, 'pt-BR'))
     .slice(0, n);
+}
+
+/** Entradas dentro de um período: '30d' (últimos 30 dias), 'ano' (ano atual) ou 'sempre'. */
+export function entriesInPeriod(entries, period, today) {
+  if (period === '30d') {
+    const start = addDays(today, -29);
+    return entries.filter((e) => e.date >= start && e.date <= today);
+  }
+  if (period === 'ano') return entries.filter((e) => yearKey(e.date) === yearKey(today));
+  return entries;
 }
 
 /** Itens com mais tempo lido: [{ id, label, type, minutes }] */
@@ -126,17 +119,19 @@ export function topItems(entries, itemsById, n = 5) {
   );
 }
 
-/** Autores (livros) e sites (artigos/blogs) com mais tempo lido: [{ id, label, kind, minutes }] */
-export function topSources(entries, itemsById, n = 5) {
+/**
+ * Autores dos livros (kind 'autor') ou sites/publicações dos artigos e posts (kind 'site')
+ * com mais tempo lido: [{ id, label, minutes, items }]. Nomes iguais com maiúsculas diferentes se juntam.
+ */
+export function topSources(entries, itemsById, kind, n = 5) {
   return ranking(
     entries,
     (e) => {
       const item = itemsById.get(e.itemId);
-      if (!item) return null;
+      if (!item || (kind === 'autor') !== (item.type === 'livro')) return null;
       const label = String((item.type === 'livro' ? item.author : item.site) || '').trim();
       if (!label) return null;
-      const kind = item.type === 'livro' ? 'autor' : 'site';
-      return { id: `${kind}:${label.toLocaleLowerCase('pt-BR')}`, label, kind };
+      return { id: label.toLocaleLowerCase('pt-BR'), label };
     },
     n,
   );

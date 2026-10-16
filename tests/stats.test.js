@@ -8,9 +8,9 @@ import {
   byWeek,
   byMonth,
   pace,
-  finishForecast,
   topItems,
   topSources,
+  entriesInPeriod,
   completedSummary,
   completedByMonth,
 } from '../docs/js/core/stats.js';
@@ -102,21 +102,7 @@ test('ritmo: média diária dos últimos 30 dias e comparação com os 30 anteri
   assert.equal(pace([e('2026-10-15', 10)], '2026-10-15').changePct, null);
 });
 
-test('previsão de término pelo ritmo de páginas do próprio livro', () => {
-  const book = { id: 'b', totalPages: 300, currentPage: 100 };
-  // Começou há 5 dias (11 a 15/10) e leu 100 páginas: 20 pág./dia -> faltam 200 -> 10 dias.
-  const entries = [e('2026-10-11', 1, { pages: 40 }), e('2026-10-13', 1, { pages: 30 }), e('2026-10-15', 1, { pages: 30 }), e('2026-10-15', 5, { itemId: 'outro', pages: 500 })];
-  const f = finishForecast(book, entries, '2026-10-15');
-  assert.equal(f.pagesPerDay, 20);
-  assert.equal(f.daysLeft, 10);
-  assert.equal(f.date, '2026-10-25');
-  // Sem leitura recente: sem previsão.
-  assert.equal(finishForecast(book, [e('2026-01-01', 1, { pages: 50 })], '2026-10-15').daysLeft, null);
-  // Livro terminado: null.
-  assert.equal(finishForecast({ id: 'b', totalPages: 10, currentPage: 10 }, entries, '2026-10-15'), null);
-});
-
-test('onde foi seu tempo: itens, autores e sites com mais minutos', () => {
+test('onde foi seu tempo: leituras, autores e sites com mais minutos', () => {
   const items = new Map([
     ['l1', { id: 'l1', type: 'livro', title: 'Livro A', author: 'C. S. Lewis' }],
     ['l2', { id: 'l2', type: 'livro', title: 'Livro B', author: 'c. s. lewis' }],
@@ -135,8 +121,23 @@ test('onde foi seu tempo: itens, autores e sites com mais minutos', () => {
     topItems(entries, items, 2).map((r) => [r.label, r.minutes]),
     [['Post', 70], ['Livro A', 50]],
   );
-  const sources = topSources(entries, items);
-  assert.deepEqual(sources.map((r) => [r.label, r.kind, r.minutes]), [['C. S. Lewis', 'autor', 90], ['Substack X', 'site', 70]]);
+  // Autores: maiúsculas diferentes contam como o mesmo; 2 livros.
+  assert.deepEqual(
+    topSources(entries, items, 'autor').map((r) => [r.label, r.minutes, r.items]),
+    [['C. S. Lewis', 90, 2]],
+  );
+  assert.deepEqual(
+    topSources(entries, items, 'site').map((r) => [r.label, r.minutes, r.items]),
+    [['Substack X', 70, 1]],
+  );
+});
+
+test('período das estatísticas: 30 dias, ano e sempre', () => {
+  const entries = [e('2026-10-15', 1), e('2026-09-16', 2), e('2026-09-15', 4), e('2025-12-31', 8)];
+  const sum = (list) => list.reduce((s, x) => s + x.minutes, 0);
+  assert.equal(sum(entriesInPeriod(entries, '30d', '2026-10-15')), 3);
+  assert.equal(sum(entriesInPeriod(entries, 'ano', '2026-10-15')), 7);
+  assert.equal(sum(entriesInPeriod(entries, 'sempre', '2026-10-15')), 15);
 });
 
 test('concluídos por período', () => {

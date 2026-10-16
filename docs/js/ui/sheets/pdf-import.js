@@ -24,11 +24,19 @@ export async function openPdfImport({ as = null } = {}) {
   }
   dismiss();
 
-  const asBook = () => openBookForm({ data: { title: info.title, author: info.author, totalPages: info.pages, source: 'pdf' } });
+  const asBook = () =>
+    openBookForm({ data: { title: info.title, author: info.author, totalPages: info.pages, coverUrl: info.coverUrl, source: 'pdf' } });
   const asArticle = () =>
     openArticleForm({
       type: 'artigo',
-      prefill: { title: info.title, site: info.author, words: info.words, pages: info.words ? null : info.pages, origin: `PDF de ${info.pages} pág.` },
+      prefill: {
+        title: info.title,
+        site: info.author,
+        words: info.words,
+        pages: info.words ? null : info.pages,
+        coverUrl: info.coverUrl,
+        origin: `PDF de ${info.pages} pág.`,
+      },
     });
   if (as === 'livro') return asBook();
 

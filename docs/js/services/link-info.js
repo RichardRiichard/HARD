@@ -2,6 +2,8 @@
 // tenta a API pública do post (título, autor, nº de palavras). Se o Substack bloquear a
 // leitura pelo navegador, devolve só o que dá para tirar do próprio endereço.
 
+import { toLocalDate } from '../core/dates.js';
+
 const TIMEOUT_MS = 10000;
 
 /** "https://fulano.substack.com/p/meu-post" -> { origin, slug, publication: 'fulano' } */
@@ -37,18 +39,21 @@ export function firstUrl(text) {
   return m ? m[0].replace(/[).,;!?]+$/, '') : '';
 }
 
-/** Converte a resposta da API de post do Substack. */
+/** Converte a resposta da API de post do Substack (data em AAAA-MM-DD no fuso de São Paulo). */
 export function fromSubstackPost(data) {
   const byline = (data.publishedBylines || []).map((b) => b?.name).filter(Boolean).join(', ');
+  const posted = data.post_date ? new Date(data.post_date) : null;
   return {
     title: String(data.title || '').trim(),
     author: byline,
     words: Number(data.wordcount) > 0 ? Number(data.wordcount) : null,
+    publishedOn: posted && !Number.isNaN(posted.getTime()) ? toLocalDate(posted) : null,
+    coverUrl: /^https:\/\//.test(data.cover_image || '') ? data.cover_image : '',
   };
 }
 
 /**
- * Retorna { title, site, words, fetched, note }.
+ * Retorna { title, site, words, publishedOn, coverUrl, fetched, note }.
  * fetched=false quando não foi possível ler a página (só dados do endereço).
  */
 export async function fetchLinkInfo(url) {
@@ -58,6 +63,8 @@ export async function fetchLinkInfo(url) {
     title: titleFromSlug(parsed.slug),
     site: parsed.publication || parsed.host,
     words: null,
+    publishedOn: null,
+    coverUrl: '',
     fetched: false,
     note: '',
   };
@@ -77,6 +84,8 @@ export async function fetchLinkInfo(url) {
       title: post.title || base.title,
       site: post.author ? `${post.author}${parsed.publication ? ` (${parsed.publication})` : ''}` : base.site,
       words: post.words,
+      publishedOn: post.publishedOn,
+      coverUrl: post.coverUrl,
       fetched: true,
       note: '',
     };

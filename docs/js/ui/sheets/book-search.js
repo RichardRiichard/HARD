@@ -1,12 +1,11 @@
 // Busca de livro por título, autor ou ISBN em todas as fontes ao mesmo tempo
-// (Google Books, Open Library e BrasilAPI), com leitor de código de barras e PDF.
+// (Google Books, Open Library e BrasilAPI), ou a partir de um PDF.
 import { html, $, setHtml } from '../dom.js';
 import { icon } from '../icons.js';
 import { openSheet } from '../overlay.js';
 import { cover } from '../components.js';
 import { searchAll, asIsbn } from '../../services/books-api.js';
 import { openBookForm } from './book-form.js';
-import { canScan, scanIsbn } from './scan.js';
 import { openPdfImport } from './pdf-import.js';
 
 const SOURCE_LABEL = { google: 'Google Books', openlibrary: 'Open Library', brasilapi: 'BrasilAPI' };
@@ -21,10 +20,7 @@ export function openBookSearch(initialQuery = '') {
         <input type="search" name="q" placeholder="Título, autor ou ISBN" autocomplete="off" enterkeyhint="search" ${initialQuery ? '' : 'autofocus'} value="${initialQuery}" aria-label="Buscar livro">
         <button type="submit" class="btn btn-primary" aria-label="Buscar">${icon('search')}</button>
       </form>
-      <div class="btn-row">
-        ${canScan() ? html`<button type="button" class="btn btn-sm" data-scan style="flex:1">${icon('book')} Ler código de barras</button>` : ''}
-        <button type="button" class="btn btn-sm" data-pdf style="flex:1">${icon('page')} Livro em PDF</button>
-      </div>
+      <button type="button" class="btn btn-sm btn-block" data-pdf>${icon('page')} Livro em PDF</button>
       <div id="bs-status" class="status-line" aria-live="polite">Busca no Google Books, na Open Library e, por ISBN, na base brasileira (BrasilAPI).</div>
       <div id="bs-results" class="results"></div>
       <div class="section" style="margin-top:16px">
@@ -75,14 +71,6 @@ export function openBookSearch(initialQuery = '') {
   });
 
   sheet.body.addEventListener('click', async (e) => {
-    if (e.target.closest('[data-scan]')) {
-      const isbn = await scanIsbn();
-      if (isbn) {
-        form.elements.q.value = isbn;
-        search(isbn);
-      }
-      return;
-    }
     if (e.target.closest('[data-pdf]')) {
       sheet.close();
       openPdfImport({ as: 'livro' });

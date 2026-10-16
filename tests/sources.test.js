@@ -18,6 +18,9 @@ test('mescla fontes: remove repetidos e completa páginas/capa', () => {
   assert.equal(merged[0].totalPages, 320);
   assert.equal(merged[0].coverUrl, 'https://g/x.jpg');
   assert.equal(merged[1].title, 'Outro livro');
+  assert.equal(merged[1].coverUrl, ''); // sem ISBN, sem capa de reserva
+  const onlyIsbn = mergeResults([[book({ title: 'Sem capa', isbn: '9780000000002' })]]);
+  assert.match(onlyIsbn[0].coverUrl, /covers\.openlibrary\.org\/b\/isbn\/9780000000002-M\.jpg/);
 });
 
 test('BrasilAPI: converte campos e força https na capa', () => {
@@ -46,7 +49,16 @@ test('compartilhar: acha o link dentro do texto', () => {
 });
 
 test('resposta da API de post do Substack', () => {
-  const r = fromSubstackPost({ title: ' Título ', wordcount: 2150, publishedBylines: [{ name: 'Ana' }, { name: 'Bia' }] });
-  assert.deepEqual(r, { title: 'Título', author: 'Ana, Bia', words: 2150 });
-  assert.equal(fromSubstackPost({ title: 'x' }).words, null);
+  const r = fromSubstackPost({
+    title: ' Título ',
+    wordcount: 2150,
+    publishedBylines: [{ name: 'Ana' }, { name: 'Bia' }],
+    post_date: '2026-10-16T01:30:00.000Z', // 22:30 do dia 15 em São Paulo
+    cover_image: 'https://substackcdn.com/image/x.jpg',
+  });
+  assert.deepEqual(r, { title: 'Título', author: 'Ana, Bia', words: 2150, publishedOn: '2026-10-15', coverUrl: 'https://substackcdn.com/image/x.jpg' });
+  const empty = fromSubstackPost({ title: 'x', cover_image: 'javascript:alert(1)' });
+  assert.equal(empty.words, null);
+  assert.equal(empty.publishedOn, null);
+  assert.equal(empty.coverUrl, '');
 });

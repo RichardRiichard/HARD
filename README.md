@@ -34,14 +34,14 @@ App web (PWA) pessoal para registrar leituras de livros, artigos e posts de blog
 - Os minutos ficam **gravados na entrada**. Se você mudar o min/página depois, o histórico não é recalculado. Para corrigir um registro, edite-o.
 - As datas usam o fuso **America/Sao_Paulo**. A semana vai de **segunda a domingo**.
 - **Ritmo:** média de minutos por dia nos últimos 30 dias, comparada com os 30 anteriores.
-- **Previsão de término:** usa o ritmo de páginas de cada livro nos últimos 30 dias.
+- **Onde foi seu tempo:** leituras, autores e sites com mais tempo, por período (30 dias, este ano, sempre), com porcentagem e top 10.
 
 ### Formas de adicionar
 
-- **Livro:** busca por título, autor ou ISBN no Google Books, na Open Library e na BrasilAPI (base brasileira da CBL, só por ISBN), tudo de uma vez. No Android, dá para **ler o código de barras** com a câmera.
-- **PDF:** o app lê o título, as páginas e, em PDFs de até 80 páginas, o número de palavras. Você escolhe se ele é livro (progresso por página) ou artigo (lido de uma vez). O arquivo **não** fica salvo no app.
+- **Livro:** busca por título, autor ou ISBN no Google Books, na Open Library e na BrasilAPI (base brasileira da CBL, só por ISBN), tudo de uma vez. Se a fonte não tiver capa, o app tenta a capa pelo ISBN. Não achou? Cadastre à mão e **escolha uma foto como capa** (ela é reduzida e guardada no app).
+- **PDF:** o app lê o título, as páginas, a **capa (1ª página)** e, em PDFs de até 80 páginas, o número de palavras. Você escolhe se ele é livro (progresso por página) ou artigo (lido de uma vez). O arquivo **não** fica salvo no app.
 - **Artigo/blog:** tempo em minutos, **páginas** (× min/página), tamanho rápido ou texto colado.
-- **Substack:** cole o link do post (`…/p/nome-do-post`). O app tenta buscar o título, o autor e o número de palavras. Se o site bloquear, preenche só o que dá para tirar do endereço.
+- **Substack:** cole o link do post (`…/p/nome-do-post`). O app tenta buscar o título, o autor, a data de publicação, a imagem e o número de palavras (que vira o tempo de leitura). Se o site bloquear, preenche só o que dá para tirar do endereço.
 - **Compartilhar (Android):** com o app instalado, no Substack ou no navegador toque em **Compartilhar → Leituras**, e o post abre já preenchido.
 
 ## Rodar localmente

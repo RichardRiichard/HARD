@@ -52,6 +52,7 @@ function articleBody(item, entries) {
       ${stat(`${formatDecimal(item.minutes)} min`, 'tempo estimado')}
       ${stat(formatDuration(totalMinutes(entries)), 'tempo registrado')}
       ${item.finishedOn ? stat(formatDateShort(item.finishedOn), 'lido em') : ''}
+      ${item.publishedOn ? stat(formatDateShort(item.publishedOn), 'publicado em') : ''}
     </div>
     <div class="btn-row" style="margin-top:12px">
       ${item.status !== 'lido'

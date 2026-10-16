@@ -7,6 +7,9 @@ import { parseDecimal, bookMinutes, displayMinutes, formatDecimal } from '../../
 import { createBook } from '../../core/progress.js';
 import { today, isValidDate } from '../../core/dates.js';
 import { addBook, saveItem } from '../actions.js';
+import { icon } from '../icons.js';
+import { pickFile } from '../../services/files.js';
+import { imageFileToCover } from '../../services/images.js';
 
 /**
  * data: dados iniciais (resultado da busca) para um livro novo.
@@ -41,16 +44,18 @@ export function openBookForm({ data = {}, item = null } = {}) {
       </div>
       <p class="hint">Deixe o min/página vazio para usar o padrão. Livros técnicos ou devocionais costumam pedir mais (ex.: 2,5).${editing ? ' Vale para os próximos registros.' : ''}</p>
       ${!src.totalPages && !editing ? html`<p class="hint">A busca não informou o total de páginas. Confira na sua edição.</p>` : ''}
+      <div class="btn-row" style="margin:-4px 0 14px">
+        <button type="button" class="btn btn-sm" data-cover style="flex:1">${icon('upload')} ${src.coverUrl ? 'Trocar capa' : 'Escolher foto da capa'}</button>
+        <button type="button" class="btn btn-sm btn-ghost danger" data-cover-remove ${src.coverUrl ? '' : 'hidden'}>Remover capa</button>
+      </div>
       ${editing
-        ? html`<label class="field"><span>URL da capa (opcional)</span>
-            <input name="coverUrl" type="url" autocomplete="off" value="${src.coverUrl || ''}" placeholder="https://">
-          </label>`
+        ? ''
         : html`<div class="field">
             <span class="field-label">Situação</span>
             <div class="seg" role="radiogroup">
-              <label><input type="radio" name="status" value="quero" checked>Quero ler</label>
+              <label><input type="radio" name="status" value="lido" checked>Já li</label>
               <label><input type="radio" name="status" value="lendo">Lendo</label>
-              <label><input type="radio" name="status" value="lido">Já li</label>
+              <label><input type="radio" name="status" value="quero">Quero ler</label>
             </div>
           </div>
           <div data-show="lendo">
@@ -104,11 +109,26 @@ export function openBookForm({ data = {}, item = null } = {}) {
 
   form.addEventListener('input', update);
   form.addEventListener('change', update);
-  if (editing) {
-    form.coverUrl.addEventListener('change', () => {
-      setHtml($('#bf-cover', form), cover({ type: 'livro', title: form.elements.title.value || '?', coverUrl: form.coverUrl.value.trim() }));
-    });
-  }
+  // Capa: da busca/PDF, ou foto escolhida pelo usuário (reduzida e guardada no app).
+  let coverUrl = src.coverUrl || '';
+  const showCover = () => {
+    setHtml($('#bf-cover', form), cover({ type: 'livro', title: form.elements.title.value || '?', coverUrl }));
+    $('[data-cover-remove]', form).hidden = !coverUrl;
+  };
+  $('[data-cover]', form).addEventListener('click', async () => {
+    try {
+      const file = await pickFile('image/*');
+      if (!file) return;
+      coverUrl = await imageFileToCover(file);
+      showCover();
+    } catch (err) {
+      error.textContent = err.message;
+    }
+  });
+  $('[data-cover-remove]', form).addEventListener('click', () => {
+    coverUrl = '';
+    showCover();
+  });
   update();
 
   form.addEventListener('submit', async (e) => {
@@ -135,11 +155,11 @@ export function openBookForm({ data = {}, item = null } = {}) {
           author: v.author.trim(),
           totalPages,
           minPerPage,
-          coverUrl: v.coverUrl.trim(),
+          coverUrl,
           ...(finished && item.status === 'lendo' ? { status: 'lido', finishedOn: today() } : {}),
         });
       } else {
-        const book = createBook({ ...data, title, author: v.author.trim(), totalPages, minPerPage });
+        const book = createBook({ ...data, title, author: v.author.trim(), totalPages, minPerPage, coverUrl });
         await addBook(book, {
           status: v.status,
           startPage,

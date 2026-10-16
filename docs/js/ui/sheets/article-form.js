@@ -150,6 +150,8 @@ export function openArticleForm({ type = 'artigo', item = null, prefill = null }
   const el = (name) => form.elements[name];
   // Nota sobre a origem do tempo (ex.: "2.150 palavras do Substack"), apagada se o usuário mexer no tempo.
   let sourceNote = '';
+  // Capa e data de publicação vindas do link ou do PDF (não aparecem como campos).
+  const extra = { coverUrl: item?.coverUrl || prefill?.coverUrl || '', publishedOn: item?.publishedOn || prefill?.publishedOn || null };
 
   function setMode(mode) {
     for (const r of form.querySelectorAll('input[name=timeMode]')) r.checked = r.value === mode;
@@ -177,7 +179,9 @@ export function openArticleForm({ type = 'artigo', item = null, prefill = null }
   }
 
   /** Aplica dados obtidos (link ou PDF) sem apagar o que o usuário já digitou de propósito. */
-  function applyInfo({ title, site, words, pages, origin }) {
+  function applyInfo({ title, site, words, pages, origin, coverUrl, publishedOn }) {
+    if (coverUrl) extra.coverUrl = coverUrl;
+    if (publishedOn) extra.publishedOn = publishedOn;
     if (title && (!el('title').value.trim() || el('title').dataset.auto === '1')) {
       el('title').value = title;
       el('title').dataset.auto = '1';
@@ -212,7 +216,7 @@ export function openArticleForm({ type = 'artigo', item = null, prefill = null }
     const info = await fetchLinkInfo(url);
     if (id !== fetchSeq) return;
     linkNote.textContent = info.fetched ? (info.words ? 'Dados preenchidos pelo link.' : 'Título e autor preenchidos; informe o tempo.') : info.note;
-    applyInfo({ title: info.title, site: info.site, words: info.words, origin: info.fetched ? 'pelo link' : '' });
+    applyInfo({ ...info, origin: info.fetched ? 'pelo link' : '' });
   }
 
   form.addEventListener('input', (e) => {
@@ -235,7 +239,7 @@ export function openArticleForm({ type = 'artigo', item = null, prefill = null }
       pdfBtn.disabled = true;
       pdfBtn.textContent = 'Lendo PDF…';
       const info = await readPdf(file);
-      applyInfo({ title: info.title, site: info.author, words: info.words, pages: info.words ? null : info.pages, origin: `PDF de ${info.pages} pág.` });
+      applyInfo({ title: info.title, site: info.author, words: info.words, pages: info.words ? null : info.pages, coverUrl: info.coverUrl, origin: `PDF de ${info.pages} pág.` });
       if (info.words) el('pages').value = String(info.pages);
       linkNote.textContent = '';
     } catch (err) {
@@ -273,6 +277,8 @@ export function openArticleForm({ type = 'artigo', item = null, prefill = null }
       timeMode,
       wordCount,
       pageCount,
+      coverUrl: extra.coverUrl,
+      publishedOn: extra.publishedOn,
     };
     try {
       if (editing) {

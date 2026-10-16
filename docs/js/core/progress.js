@@ -58,6 +58,8 @@ export function createArticle(data, now = new Date()) {
     wordCount: data.wordCount || null,
     // Artigo medido em páginas (ex.: PDF): as páginas também entram na contagem de páginas lidas.
     pageCount: data.timeMode === 'paginas' && data.pageCount > 0 ? Math.round(data.pageCount) : null,
+    coverUrl: data.coverUrl || '',
+    publishedOn: data.publishedOn || null,
     status: 'quero',
     finishedOn: null,
     createdAt: ts,

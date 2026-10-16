@@ -2,6 +2,7 @@
 // O PDF não é salvo no app; só os dados extraídos. Usa pdf.js (Apache 2.0) incluído em vendor/,
 // carregado apenas quando necessário.
 import { countWords } from '../core/calc.js';
+import { canvasToCover, COVER_WIDTH } from './images.js';
 
 const LIB_URL = new URL('../../vendor/pdfjs/pdf.min.js', import.meta.url).href;
 const WORKER_URL = new URL('../../vendor/pdfjs/pdf.worker.min.js', import.meta.url).href;
@@ -34,8 +35,25 @@ export function titleFromFileName(name) {
     .trim();
 }
 
+/** Desenha a 1ª página como capa (JPEG pequeno). Falha silenciosa: sem capa. */
+async function renderCover(doc) {
+  try {
+    const page = await doc.getPage(1);
+    const base = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({ scale: COVER_WIDTH / base.width });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    page.cleanup();
+    return canvasToCover(canvas, canvas.width, canvas.height);
+  } catch {
+    return '';
+  }
+}
+
 /**
- * Retorna { title, author, pages, words } — words é null se o PDF for longo
+ * Retorna { title, author, pages, words, coverUrl } — words é null se o PDF for longo
  * ou se não tiver texto (ex.: digitalizado como imagem).
  */
 export async function readPdf(file) {
@@ -67,7 +85,8 @@ export async function readPdf(file) {
     }
     // Títulos de metadados costumam vir como "Microsoft Word - arquivo.docx"; nesses casos usa o nome do arquivo.
     const useMeta = metaTitle && !/^(microsoft word|untitled|sem título)|\.(docx?|pdf)$/i.test(metaTitle);
-    return { title: useMeta ? metaTitle : titleFromFileName(file.name), author, pages, words };
+    const coverUrl = await renderCover(doc);
+    return { title: useMeta ? metaTitle : titleFromFileName(file.name), author, pages, words, coverUrl };
   } finally {
     doc.destroy();
   }

@@ -764,6 +764,18 @@ a:focus-visible {
   font-size: 1.4rem;
 }
 
+/* Imagem de post/artigo: quadrada, no tamanho do ícone de tipo. */
+.cover.thumb {
+  width: 40px;
+  aspect-ratio: 1;
+  border-radius: 10px;
+}
+
+.cover.lg.thumb {
+  width: 64px;
+  border-radius: 14px;
+}
+
 .badge {
   display: inline-block;
   padding: 2px 8px;

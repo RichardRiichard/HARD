@@ -152,7 +152,13 @@ export function mergeResults(lists) {
       if (target.isbn) byIsbn.set(target.isbn, target);
     }
   }
+  // Sem capa nas fontes: tenta a capa da Open Library pelo ISBN (se não existir, aparecem as iniciais).
+  for (const b of merged) if (!b.coverUrl && b.isbn) b.coverUrl = coverByIsbn(b.isbn);
   return merged;
+}
+
+export function coverByIsbn(isbn) {
+  return `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-M.jpg?default=false`;
 }
 
 export const SOURCES = {
