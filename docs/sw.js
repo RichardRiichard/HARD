@@ -1,6 +1,6 @@
 // Service worker: app funciona offline (exceto busca de livros e backup).
 // Ao publicar uma versão nova, aumente VERSION para os aparelhos baixarem os arquivos novos.
-const VERSION = '1.1.2';
+const VERSION = '1.1.3';
 const APP_CACHE = `leituras-app-${VERSION}`;
 const COVERS_CACHE = 'leituras-capas';
 const MAX_COVERS = 100;
@@ -58,7 +58,8 @@ const PRECACHE = [
 const LAZY = ['vendor/pdfjs/pdf.min.js', 'vendor/pdfjs/pdf.worker.min.js'];
 
 // Arquivos buscados primeiro na rede (para mudanças valerem sem trocar VERSION).
-const NETWORK_FIRST = ['js/config.js'];
+// O manifest também: o Chrome lê dele, ao instalar, se o app aparece no "Compartilhar".
+const NETWORK_FIRST = ['js/config.js', 'manifest.webmanifest'];
 
 const COVER_HOSTS = ['covers.openlibrary.org', 'books.google.com', 'books.googleusercontent.com'];
 

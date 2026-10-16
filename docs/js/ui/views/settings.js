@@ -12,7 +12,7 @@ import * as bk from '../../services/backup.js';
 import { backup } from '../../services/backup.js';
 import { openVersionPicker, importFromText } from '../restore.js';
 
-export const APP_VERSION = '1.1.2';
+export const APP_VERSION = '1.1.3';
 
 function readingForm() {
   const s = state.settings;
@@ -75,6 +75,12 @@ function driveSection() {
   </div>`;
 }
 
+/** Ajuda a diagnosticar o "Compartilhar": só funciona no app instalado (não no navegador nem em atalho). */
+function openMode() {
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+  return standalone ? 'app instalado' : 'navegador ou atalho';
+}
+
 async function storageInfo() {
   try {
     const persisted = (await navigator.storage?.persisted?.()) ?? null;
@@ -124,6 +130,7 @@ export default {
             <div class="kv"><span>Itens</span><span>${state.items.length}</span></div>
             <div class="kv"><span>Registros de leitura</span><span>${state.entries.length}</span></div>
             <div class="kv"><span>Armazenamento</span><span id="storage-info">…</span></div>
+            <div class="kv"><span>Aberto como</span><span>${openMode()}</span></div>
             <div class="kv"><span>Versão</span><span>${APP_VERSION}</span></div>
           </div>
         </section>
