@@ -60,40 +60,86 @@ export function byMonth(entries, today, count = 12) {
   return bucketize(entries, monthKey, keys);
 }
 
-/** Minutos por dia (Map 'AAAA-MM-DD' -> minutos). */
-export function minutesByDay(entries) {
-  const map = new Map();
-  for (const e of entries) map.set(e.date, (map.get(e.date) || 0) + (Number(e.minutes) || 0));
-  return map;
+/**
+ * Ritmo: média de minutos por dia nos últimos `days` dias (terminando hoje)
+ * e comparação com os `days` dias anteriores. changePct é null sem base de comparação.
+ */
+export function pace(entries, today, days = 30) {
+  const start = addDays(today, -(days - 1));
+  const prevStart = addDays(start, -days);
+  const prevEnd = addDays(start, -1);
+  const current = totalMinutes(entries.filter((e) => e.date >= start && e.date <= today));
+  const previous = totalMinutes(entries.filter((e) => e.date >= prevStart && e.date <= prevEnd));
+  return {
+    days,
+    total: current,
+    perDay: round1(current / days),
+    previousTotal: previous,
+    previousPerDay: round1(previous / days),
+    changePct: previous > 0 ? Math.round(((current - previous) / previous) * 100) : null,
+  };
 }
 
 /**
- * Sequência de dias seguidos com leitura.
- * current: termina hoje, ou ontem se hoje ainda não houve leitura (a sequência segue viva).
- * longest: maior sequência já registrada.
+ * Previsão de término de um livro pelo ritmo de páginas DELE nos últimos `days` dias.
+ * Se começou há menos tempo, a média usa só os dias desde a primeira leitura da janela.
+ * Retorna null se já terminou; daysLeft null quando não há leitura recente para estimar.
  */
-export function streak(entries, today) {
-  const days = [...new Set(entries.map((e) => e.date))]
-    .map(dayNumber)
-    .sort((a, b) => a - b);
-  if (!days.length) return { current: 0, longest: 0 };
+export function finishForecast(book, entries, today, days = 30) {
+  const remaining = book.totalPages - (book.currentPage || 0);
+  if (remaining <= 0) return null;
+  const start = addDays(today, -(days - 1));
+  const recent = entries.filter((e) => e.itemId === book.id && e.date >= start && e.date <= today && e.pages > 0);
+  const pages = recent.reduce((sum, e) => sum + e.pages, 0);
+  if (!pages) return { remaining, pagesPerDay: 0, daysLeft: null, date: null };
+  const first = recent.reduce((min, e) => (e.date < min ? e.date : min), today);
+  const span = dayNumber(today) - dayNumber(first) + 1;
+  const perDay = pages / span;
+  const daysLeft = Math.ceil(remaining / perDay);
+  return { remaining, pagesPerDay: round1(perDay), daysLeft, date: addDays(today, daysLeft) };
+}
 
-  let longest = 1;
-  let run = 1;
-  for (let i = 1; i < days.length; i++) {
-    run = days[i] === days[i - 1] + 1 ? run + 1 : 1;
-    if (run > longest) longest = run;
+function ranking(entries, keyOf, n) {
+  const map = new Map();
+  for (const e of entries) {
+    const key = keyOf(e);
+    if (!key) continue;
+    const row = map.get(key.id) || { ...key, minutes: 0 };
+    row.minutes += Number(e.minutes) || 0;
+    map.set(key.id, row);
   }
+  return [...map.values()]
+    .map((r) => ({ ...r, minutes: round1(r.minutes) }))
+    .sort((a, b) => b.minutes - a.minutes)
+    .slice(0, n);
+}
 
-  const set = new Set(days);
-  const t = dayNumber(today);
-  let cursor = set.has(t) ? t : set.has(t - 1) ? t - 1 : null;
-  let current = 0;
-  while (cursor !== null && set.has(cursor)) {
-    current += 1;
-    cursor -= 1;
-  }
-  return { current, longest };
+/** Itens com mais tempo lido: [{ id, label, type, minutes }] */
+export function topItems(entries, itemsById, n = 5) {
+  return ranking(
+    entries,
+    (e) => {
+      const item = itemsById.get(e.itemId);
+      return item ? { id: item.id, label: item.title, type: item.type } : null;
+    },
+    n,
+  );
+}
+
+/** Autores (livros) e sites (artigos/blogs) com mais tempo lido: [{ id, label, kind, minutes }] */
+export function topSources(entries, itemsById, n = 5) {
+  return ranking(
+    entries,
+    (e) => {
+      const item = itemsById.get(e.itemId);
+      if (!item) return null;
+      const label = String((item.type === 'livro' ? item.author : item.site) || '').trim();
+      if (!label) return null;
+      const kind = item.type === 'livro' ? 'autor' : 'site';
+      return { id: `${kind}:${label.toLocaleLowerCase('pt-BR')}`, label, kind };
+    },
+    n,
+  );
 }
 
 /**

@@ -7,7 +7,10 @@ import {
   minutesThisWeek,
   byWeek,
   byMonth,
-  streak,
+  pace,
+  finishForecast,
+  topItems,
+  topSources,
   completedSummary,
   completedByMonth,
 } from '../docs/js/core/stats.js';
@@ -82,33 +85,58 @@ test('leitura às 23h em São Paulo conta no dia certo (não no dia seguinte em 
   assert.equal(byWeek(entries, '2026-10-19', 2)[0].minutes, 25);
 });
 
-test('sequência: dias seguidos terminando hoje', () => {
-  const entries = [e('2026-10-13', 1), e('2026-10-14', 1), e('2026-10-15', 1), e('2026-10-15', 2)];
-  assert.deepEqual(streak(entries, '2026-10-15'), { current: 3, longest: 3 });
+test('ritmo: média diária dos últimos 30 dias e comparação com os 30 anteriores', () => {
+  const entries = [
+    e('2026-10-15', 60), // hoje
+    e('2026-09-16', 30), // 1º dia da janela atual (15/10 - 29)
+    e('2026-09-15', 45), // último dia da janela anterior
+    e('2026-08-17', 15), // 1º dia da janela anterior
+    e('2026-08-16', 999), // fora das duas janelas
+  ];
+  const p = pace(entries, '2026-10-15', 30);
+  assert.equal(p.total, 90);
+  assert.equal(p.perDay, 3);
+  assert.equal(p.previousTotal, 60);
+  assert.equal(p.previousPerDay, 2);
+  assert.equal(p.changePct, 50);
+  assert.equal(pace([e('2026-10-15', 10)], '2026-10-15').changePct, null);
 });
 
-test('sequência: continua viva se a última leitura foi ontem', () => {
-  const entries = [e('2026-10-13', 1), e('2026-10-14', 1)];
-  assert.equal(streak(entries, '2026-10-15').current, 2);
+test('previsão de término pelo ritmo de páginas do próprio livro', () => {
+  const book = { id: 'b', totalPages: 300, currentPage: 100 };
+  // Começou há 5 dias (11 a 15/10) e leu 100 páginas: 20 pág./dia -> faltam 200 -> 10 dias.
+  const entries = [e('2026-10-11', 1, { pages: 40 }), e('2026-10-13', 1, { pages: 30 }), e('2026-10-15', 1, { pages: 30 }), e('2026-10-15', 5, { itemId: 'outro', pages: 500 })];
+  const f = finishForecast(book, entries, '2026-10-15');
+  assert.equal(f.pagesPerDay, 20);
+  assert.equal(f.daysLeft, 10);
+  assert.equal(f.date, '2026-10-25');
+  // Sem leitura recente: sem previsão.
+  assert.equal(finishForecast(book, [e('2026-01-01', 1, { pages: 50 })], '2026-10-15').daysLeft, null);
+  // Livro terminado: null.
+  assert.equal(finishForecast({ id: 'b', totalPages: 10, currentPage: 10 }, entries, '2026-10-15'), null);
 });
 
-test('sequência: zera quando passa um dia sem leitura', () => {
-  const entries = [e('2026-10-12', 1), e('2026-10-13', 1)];
-  assert.equal(streak(entries, '2026-10-15').current, 0);
-  assert.equal(streak(entries, '2026-10-15').longest, 2);
-});
-
-test('sequência: recorde e lacunas, atravessando meses', () => {
-  const entries = ['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-05', '2026-10-14', '2026-10-15'].map((d) => e(d, 1));
-  assert.deepEqual(streak(entries, '2026-10-15'), { current: 2, longest: 4 });
-  assert.deepEqual(streak([], '2026-10-15'), { current: 0, longest: 0 });
-});
-
-test('sequência usa a data local de São Paulo', () => {
-  // Leituras às 22h de SP em dias seguidos (já são o dia seguinte em UTC).
-  const dates = ['2026-10-14T01:00:00Z', '2026-10-15T01:00:00Z', '2026-10-16T01:00:00Z'].map((iso) => toLocalDate(new Date(iso)));
-  assert.deepEqual(dates, ['2026-10-13', '2026-10-14', '2026-10-15']);
-  assert.equal(streak(dates.map((d) => e(d, 1)), '2026-10-15').current, 3);
+test('onde foi seu tempo: itens, autores e sites com mais minutos', () => {
+  const items = new Map([
+    ['l1', { id: 'l1', type: 'livro', title: 'Livro A', author: 'C. S. Lewis' }],
+    ['l2', { id: 'l2', type: 'livro', title: 'Livro B', author: 'c. s. lewis' }],
+    ['a1', { id: 'a1', type: 'blog', title: 'Post', site: 'Substack X' }],
+    ['a2', { id: 'a2', type: 'artigo', title: 'Sem site', site: '' }],
+  ]);
+  const entries = [
+    e('2026-10-01', 30, { itemId: 'l1' }),
+    e('2026-10-02', 20, { itemId: 'l1' }),
+    e('2026-10-02', 40, { itemId: 'l2' }),
+    e('2026-10-03', 70, { itemId: 'a1' }),
+    e('2026-10-03', 5, { itemId: 'a2' }),
+    e('2026-10-03', 5, { itemId: 'apagado' }),
+  ];
+  assert.deepEqual(
+    topItems(entries, items, 2).map((r) => [r.label, r.minutes]),
+    [['Post', 70], ['Livro A', 50]],
+  );
+  const sources = topSources(entries, items);
+  assert.deepEqual(sources.map((r) => [r.label, r.kind, r.minutes]), [['C. S. Lewis', 'autor', 90], ['Substack X', 'site', 70]]);
 });
 
 test('concluídos por período', () => {

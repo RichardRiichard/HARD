@@ -33,7 +33,16 @@ App web (PWA) pessoal para registrar leituras de livros, artigos e posts de blog
 - **Histórico:** cada marcação vira uma entrada (item, data, páginas, minutos). O total do app é sempre a soma das entradas. Você pode editar a data (para registrar leituras passadas), as páginas e os minutos, ou apagar uma entrada.
 - Os minutos ficam **gravados na entrada**. Se você mudar o min/página depois, o histórico não é recalculado. Para corrigir um registro, edite-o.
 - As datas usam o fuso **America/Sao_Paulo**. A semana vai de **segunda a domingo**.
-- A **sequência de dias** continua viva se a última leitura foi hoje ou ontem.
+- **Ritmo:** média de minutos por dia nos últimos 30 dias, comparada com os 30 anteriores.
+- **Previsão de término:** usa o ritmo de páginas de cada livro nos últimos 30 dias.
+
+### Formas de adicionar
+
+- **Livro:** busca por título, autor ou ISBN no Google Books, na Open Library e na BrasilAPI (base brasileira da CBL, só por ISBN), tudo de uma vez. No Android, dá para **ler o código de barras** com a câmera.
+- **PDF:** o app lê o título, as páginas e, em PDFs de até 80 páginas, o número de palavras. Você escolhe se ele é livro (progresso por página) ou artigo (lido de uma vez). O arquivo **não** fica salvo no app.
+- **Artigo/blog:** tempo em minutos, **páginas** (× min/página), tamanho rápido ou texto colado.
+- **Substack:** cole o link do post (`…/p/nome-do-post`). O app tenta buscar o título, o autor e o número de palavras. Se o site bloquear, preenche só o que dá para tirar do endereço.
+- **Compartilhar (Android):** com o app instalado, no Substack ou no navegador toque em **Compartilhar → Leituras**, e o post abre já preenchido.
 
 ## Rodar localmente
 
@@ -164,12 +173,29 @@ Em **Configurações** → **Seus dados**:
 - **Importar backup (JSON):** substitui tudo pelos dados do arquivo, com confirmação.
 - **Exportar histórico (CSV):** para Excel ou Google Planilhas, com `;` e vírgula decimal.
 
+## Ativar a chave do Google Books
+
+Sem chave, o Google Books usa uma cota gratuita **compartilhada por todo mundo**, que acaba quase todo dia ("limite de buscas atingido"). Com uma chave sua (gratuita), você tem 1.000 buscas por dia.
+
+1. No https://console.cloud.google.com/, selecione o projeto **Leituras**.
+2. **APIs e serviços** → **Biblioteca** → busque **Books API** → **Ativar**.
+3. **APIs e serviços** → **Credenciais** → **Criar credenciais** → **Chave de API**. Copie a chave (começa com `AIza`).
+4. Clique na chave criada para restringir:
+   - **Restrições de aplicativo:** Sites → adicione `https://richardriichard.github.io/*`
+   - **Restrições de API:** Restringir chave → marque só **Books API** → **Salvar**
+5. No GitHub, edite `docs/js/config.js` e cole em `GOOGLE_BOOKS_API_KEY = '...'`. Commit.
+
+A chave aparece no navegador (como todo app web), mas as restrições acima impedem o uso por outros sites e para outras APIs.
+
 ## Decisões e limites
 
 - **Busca de livros:** usa a Open Library e, como alternativa, o Google Books. Os dois são gratuitos e sem chave. Sem chave, o Google Books tem uma cota compartilhada e às vezes responde "limite atingido"; tente de novo depois ou use a Open Library. O total de páginas vem de uma edição média, então confira o da sua edição (é editável).
 - **Capas offline:** ficam em cache só quando o servidor de imagens permite (CORS). As outras aparecem quando há internet. Sem capa, o app mostra as iniciais do título.
 - **Dados locais:** apagar os dados do site no navegador apaga as leituras. O app pede ao navegador armazenamento persistente (veja em Configurações → Sobre), mas o backup é a garantia.
-- **Fora do escopo:** cronômetro, leitura automática do conteúdo de URLs, redes sociais.
+- **Substack:** não há login nem lista de leitura automática (o Substack não oferece isso sem servidor). Se a leitura do link for bloqueada pelo navegador, o app avisa e você completa o tempo.
+- **Lojas (Amazon etc.):** não têm acesso gratuito pelo navegador; por isso a busca usa as três fontes acima e o ISBN.
+- **Leitor de PDF:** pdf.js (Apache 2.0), incluído em `docs/vendor/pdfjs`, baixado só no primeiro uso e guardado para uso offline.
+- **Fora do escopo:** cronômetro, redes sociais.
 
 ## Estrutura do projeto
 

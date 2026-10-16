@@ -56,6 +56,8 @@ export function createArticle(data, now = new Date()) {
     minutes: round1(Math.max(0, Number(data.minutes) || 0)),
     timeMode: data.timeMode || 'manual',
     wordCount: data.wordCount || null,
+    // Artigo medido em páginas (ex.: PDF): as páginas também entram na contagem de páginas lidas.
+    pageCount: data.timeMode === 'paginas' && data.pageCount > 0 ? Math.round(data.pageCount) : null,
     status: 'quero',
     finishedOn: null,
     createdAt: ts,
@@ -120,7 +122,8 @@ export function correctCurrentPage(book, page, now = new Date()) {
 /** Marca artigo/blog como lido e gera a entrada com o tempo do item. */
 export function markArticleRead(article, { date, now = new Date() }) {
   const item = { ...article, status: 'lido', finishedOn: date, updatedAt: iso(now) };
-  const entry = createEntry({ itemId: article.id, date, minutes: article.minutes }, now);
+  const pages = article.timeMode === 'paginas' && article.pageCount > 0 ? article.pageCount : null;
+  const entry = createEntry({ itemId: article.id, date, minutes: article.minutes, pages }, now);
   return { item, entry };
 }
 

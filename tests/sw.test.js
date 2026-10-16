@@ -15,15 +15,16 @@ function walk(dir) {
 
 const sw = readFileSync(join(DOCS, 'sw.js'), 'utf8');
 const precache = [...sw.match(/const PRECACHE = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+const lazy = [...sw.match(/const LAZY = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
 
 test('todo arquivo do app está na lista de cache offline', () => {
-  const files = walk(DOCS).filter((f) => f !== 'sw.js' && !f.endsWith('.md'));
-  const missing = files.filter((f) => !precache.includes(f));
+  const files = walk(DOCS).filter((f) => f !== 'sw.js' && !/\.(md|txt)$/.test(f));
+  const missing = files.filter((f) => !precache.includes(f) && !lazy.includes(f));
   assert.deepEqual(missing, [], `Adicione ao PRECACHE em docs/sw.js: ${missing.join(', ')}`);
 });
 
 test('todo item da lista de cache existe', () => {
-  const ghost = precache.filter((f) => f !== './' && !existsSync(join(DOCS, f)));
+  const ghost = [...precache, ...lazy].filter((f) => f !== './' && !existsSync(join(DOCS, f)));
   assert.deepEqual(ghost, [], `Arquivos inexistentes no PRECACHE: ${ghost.join(', ')}`);
 });
 

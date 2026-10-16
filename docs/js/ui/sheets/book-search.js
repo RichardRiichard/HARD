@@ -1,29 +1,31 @@
-// Busca de livro por título, autor ou ISBN (Open Library / Google Books).
+// Busca de livro por título, autor ou ISBN em todas as fontes ao mesmo tempo
+// (Google Books, Open Library e BrasilAPI), com leitor de código de barras e PDF.
 import { html, $, setHtml } from '../dom.js';
 import { icon } from '../icons.js';
 import { openSheet } from '../overlay.js';
 import { cover } from '../components.js';
-import { SOURCES, asIsbn } from '../../services/books-api.js';
+import { searchAll, asIsbn } from '../../services/books-api.js';
 import { openBookForm } from './book-form.js';
+import { canScan, scanIsbn } from './scan.js';
+import { openPdfImport } from './pdf-import.js';
 
-export function openBookSearch() {
-  let source = 'openlibrary';
+const SOURCE_LABEL = { google: 'Google Books', openlibrary: 'Open Library', brasilapi: 'BrasilAPI' };
+
+export function openBookSearch(initialQuery = '') {
   let results = [];
-  let lastQuery = '';
   let seq = 0;
 
   const sheet = openSheet({
     title: 'Adicionar livro',
     content: html`<form class="search-bar" role="search">
-        <input type="search" name="q" placeholder="Título, autor ou ISBN" autocomplete="off" enterkeyhint="search" autofocus aria-label="Buscar livro">
+        <input type="search" name="q" placeholder="Título, autor ou ISBN" autocomplete="off" enterkeyhint="search" ${initialQuery ? '' : 'autofocus'} value="${initialQuery}" aria-label="Buscar livro">
         <button type="submit" class="btn btn-primary" aria-label="Buscar">${icon('search')}</button>
       </form>
-      <div class="seg" role="group" aria-label="Fonte da busca">
-        ${Object.entries(SOURCES).map(
-          ([key, s]) => html`<button type="button" data-source="${key}" aria-pressed="${String(key === source)}">${s.label}</button>`,
-        )}
+      <div class="btn-row">
+        ${canScan() ? html`<button type="button" class="btn btn-sm" data-scan style="flex:1">${icon('book')} Ler código de barras</button>` : ''}
+        <button type="button" class="btn btn-sm" data-pdf style="flex:1">${icon('page')} Livro em PDF</button>
       </div>
-      <div id="bs-status" class="status-line" aria-live="polite"></div>
+      <div id="bs-status" class="status-line" aria-live="polite">Busca no Google Books, na Open Library e, por ISBN, na base brasileira (BrasilAPI).</div>
       <div id="bs-results" class="results"></div>
       <div class="section" style="margin-top:16px">
         <button type="button" class="btn btn-block" data-manual>${icon('edit')} Não encontrei: cadastrar manualmente</button>
@@ -34,15 +36,6 @@ export function openBookSearch() {
   const status = $('#bs-status', sheet.body);
   const list = $('#bs-results', sheet.body);
 
-  function setSource(key) {
-    source = key;
-    for (const b of sheet.body.querySelectorAll('[data-source]')) b.setAttribute('aria-pressed', String(b.dataset.source === key));
-  }
-
-  function other() {
-    return source === 'openlibrary' ? 'google' : 'openlibrary';
-  }
-
   function renderResults() {
     setHtml(
       list,
@@ -52,7 +45,7 @@ export function openBookSearch() {
           <div class="row-main">
             <div class="row-title">${b.title}</div>
             <div class="row-sub">${[b.author, b.year].filter(Boolean).join(' · ') || 'Autor desconhecido'}</div>
-            <div class="row-sub">${b.totalPages ? `${b.totalPages} páginas` : 'Páginas não informadas'}</div>
+            <div class="row-sub">${b.totalPages ? `${b.totalPages} páginas` : 'Páginas não informadas'} · ${SOURCE_LABEL[b.source] || ''}</div>
           </div>
         </button>`,
       ),
@@ -60,25 +53,18 @@ export function openBookSearch() {
   }
 
   async function search(q) {
-    lastQuery = q;
     const id = ++seq;
     results = [];
     renderResults();
-    status.textContent = `Buscando na ${SOURCES[source].label}…`;
-    try {
-      const found = await SOURCES[source].search(q);
-      if (id !== seq) return;
-      results = found;
-      renderResults();
-      if (found.length) {
-        setHtml(status, html`${found.length} resultado${found.length > 1 ? 's' : ''}. <button type="button" class="link-btn" data-try="${other()}">Buscar no ${SOURCES[other()].label}</button>`);
-      } else {
-        setHtml(status, html`Nada encontrado na ${SOURCES[source].label}. <button type="button" class="link-btn" data-try="${other()}">Tentar no ${SOURCES[other()].label}</button>`);
-      }
-    } catch (err) {
-      if (id !== seq) return;
-      setHtml(status, html`${err.message} <button type="button" class="link-btn" data-try="${other()}">Tentar no ${SOURCES[other()].label}</button>`);
-    }
+    status.textContent = 'Buscando…';
+    const { results: found, failures } = await searchAll(q);
+    if (id !== seq) return;
+    results = found;
+    renderResults();
+    const failed = failures.length ? ` (${failures.map((f) => `${f.label}: ${f.message}`).join('; ')})` : '';
+    if (found.length) status.textContent = `${found.length} resultado${found.length > 1 ? 's' : ''}${failed}.`;
+    else if (failures.length === 3) status.textContent = `Não foi possível buscar agora${failed}.`;
+    else status.textContent = `Nada encontrado${failed}. ${asIsbn(q) ? 'Confira o ISBN ou' : 'Tente o ISBN (atrás do livro) ou'} cadastre manualmente.`;
   }
 
   form.addEventListener('submit', (e) => {
@@ -88,17 +74,18 @@ export function openBookSearch() {
     form.elements.q.blur();
   });
 
-  sheet.body.addEventListener('click', (e) => {
-    const src = e.target.closest('[data-source]');
-    if (src) {
-      setSource(src.dataset.source);
-      if (lastQuery) search(lastQuery);
+  sheet.body.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-scan]')) {
+      const isbn = await scanIsbn();
+      if (isbn) {
+        form.elements.q.value = isbn;
+        search(isbn);
+      }
       return;
     }
-    const tryBtn = e.target.closest('[data-try]');
-    if (tryBtn) {
-      setSource(tryBtn.dataset.try);
-      if (lastQuery) search(lastQuery);
+    if (e.target.closest('[data-pdf]')) {
+      sheet.close();
+      openPdfImport({ as: 'livro' });
       return;
     }
     const pick = e.target.closest('[data-pick]');
@@ -115,4 +102,6 @@ export function openBookSearch() {
       openBookForm({ data: isbn ? { isbn, source: 'manual' } : { title: typed, source: 'manual' } });
     }
   });
+
+  if (initialQuery) search(initialQuery);
 }

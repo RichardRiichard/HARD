@@ -28,3 +28,15 @@ export function pickTextFile(accept = '.json,application/json') {
     input.click();
   });
 }
+
+/** Abre o seletor de arquivos e resolve com o arquivo escolhido (ou null). */
+export function pickFile(accept) {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.addEventListener('change', () => resolve(input.files?.[0] || null));
+    input.addEventListener('cancel', () => resolve(null));
+    input.click();
+  });
+}

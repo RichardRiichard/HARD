@@ -127,3 +127,15 @@ test('status manual: "lido" define data de conclusão; outros limpam', () => {
   assert.equal(lido.finishedOn, '2026-10-15');
   assert.equal(setStatus(lido, 'abandonado', { date: '2026-10-16', now }).finishedOn, null);
 });
+
+test('artigo medido em páginas: a entrada leva as páginas', () => {
+  const a = createArticle({ title: 'PDF', minutes: 18, timeMode: 'paginas', pageCount: 12 }, now);
+  assert.equal(a.pageCount, 12);
+  const { entry } = markArticleRead(a, { date: '2026-10-15', now });
+  assert.equal(entry.pages, 12);
+  assert.equal(entry.minutes, 18);
+  // Outros modos não levam páginas.
+  const b = createArticle({ title: 'Post', minutes: 5, timeMode: 'manual', pageCount: 12 }, now);
+  assert.equal(b.pageCount, null);
+  assert.equal(markArticleRead(b, { date: '2026-10-15', now }).entry.pages, null);
+});

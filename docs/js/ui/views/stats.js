@@ -1,4 +1,4 @@
-// Estatísticas: total, por tipo, por semana/mês, páginas, concluídos e sequência.
+// Estatísticas: total, ritmo, por tipo, por semana/mês, páginas, previsão de término, onde foi o tempo e concluídos.
 import { html, setHtml, $, onAction } from '../dom.js';
 import { icon } from '../icons.js';
 import * as store from '../../data/store.js';
@@ -10,11 +10,13 @@ import {
   minutesByType,
   byWeek,
   byMonth,
-  streak,
+  pace,
+  finishForecast,
+  topItems,
+  topSources,
   completedSummary,
-  minutesByDay,
 } from '../../core/stats.js';
-import { today, addDays, weekStart, formatWeekShort, formatMonthShort, formatMonthLong, formatDateShort } from '../../core/dates.js';
+import { today, addDays, formatWeekShort, formatMonthShort, formatMonthLong, formatDateShort } from '../../core/dates.js';
 import { barChart, bindChart } from '../chart.js';
 
 let period = 'semana';
@@ -95,21 +97,49 @@ function doneTable(t) {
   </table>`;
 }
 
-/** Calendário das últimas 16 semanas (intensidade = minutos do dia). */
-function heatmap(t) {
-  const days = minutesByDay(state.entries);
-  const start = addDays(weekStart(t), -7 * 15);
-  const cells = [];
-  for (let i = 0; i < 16 * 7; i++) {
-    const d = addDays(start, i);
-    const m = days.get(d) || 0;
-    const level = d > t ? 'future' : m === 0 ? '' : m < 15 ? 'l1' : m < 45 ? 'l2' : 'l3';
-    cells.push(html`<i class="${level}" title="${formatDateShort(d)}: ${formatDuration(m)}"></i>`);
-  }
-  return html`<div class="heatmap" role="img" aria-label="Dias com leitura nas últimas 16 semanas">${cells}</div>
-    <div class="small muted" style="display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:6px">
-      Menos <span class="heatmap" style="display:inline-grid;grid-template-rows:1fr;width:64px"><i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i></span> Mais
-    </div>`;
+function forecastSection(t) {
+  const books = state.items.filter((i) => i.type === 'livro' && i.status === 'lendo');
+  if (!books.length) return '';
+  const rows = books
+    .map((b) => ({ b, f: finishForecast(b, state.entries, t) }))
+    .filter((r) => r.f)
+    .sort((x, y) => (x.f.daysLeft ?? 1e9) - (y.f.daysLeft ?? 1e9));
+  if (!rows.length) return '';
+  return html`<section class="section card">
+    <div class="section-head"><h2>Previsão de término</h2><span class="small muted">ritmo dos últimos 30 dias</span></div>
+    <div class="list">
+      ${rows.map(
+        ({ b, f }) => html`<a class="kv" href="#/item/${encodeURIComponent(b.id)}" style="text-decoration:none;color:inherit">
+          <span>${b.title}<br><span class="small">faltam ${f.remaining} pág.${f.pagesPerDay ? ` · ${formatDecimal(f.pagesPerDay, 1)} pág./dia` : ''}</span></span>
+          <span>${f.daysLeft ? html`~${f.daysLeft} ${f.daysLeft === 1 ? 'dia' : 'dias'}<br><span class="small muted">${formatDateShort(f.date)}</span>` : html`<span class="small muted">sem leitura recente</span>`}</span>
+        </a>`,
+      )}
+    </div>
+  </section>`;
+}
+
+function rankList(rows) {
+  if (!rows.length) return html`<p class="small muted" style="margin:0">Nada ainda.</p>`;
+  const max = rows[0].minutes || 1;
+  return html`<div class="type-bars">
+    ${rows.map(
+      (r) => html`<div>
+        <div class="type-bar-label"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.label}</span><b>${formatDuration(r.minutes)}</b></div>
+        <div class="type-bar" style="--c:var(--accent)"><i style="width:${(100 * r.minutes) / max}%"></i></div>
+      </div>`,
+    )}
+  </div>`;
+}
+
+function whereSection() {
+  const byId = store.itemsById();
+  return html`<section class="section card">
+    <div class="section-head"><h2>Onde foi seu tempo</h2></div>
+    <h3 class="small muted" style="margin:0 0 8px">Leituras</h3>
+    ${rankList(topItems(state.entries, byId, 5))}
+    <h3 class="small muted" style="margin:16px 0 8px">Autores e sites</h3>
+    ${rankList(topSources(state.entries, byId, 5))}
+  </section>`;
 }
 
 export default {
@@ -126,7 +156,7 @@ export default {
     }
     const t = today();
     const total = splitHours(totalMinutes(state.entries));
-    const s = streak(state.entries, t);
+    const p = pace(state.entries, t, 30);
     const series = timeSeries(t);
     const pages = pageSeries(t);
 
@@ -141,9 +171,9 @@ export default {
         </section>
 
         <div class="stat-grid" style="margin-top:10px">
+          ${stat(`${formatDecimal(p.perDay, 0)} min`, 'por dia, média de 30 dias')}
+          ${stat(p.changePct === null ? '—' : `${p.changePct > 0 ? '+' : p.changePct < 0 ? '−' : ''}${Math.abs(p.changePct)}%`, p.changePct === null ? 'sem dados dos 30 dias anteriores' : 'vs. 30 dias anteriores')}
           ${stat(formatInt(totalPages(state.entries)), 'páginas lidas')}
-          ${stat(s.current === 1 ? '1 dia' : `${s.current} dias`, 'sequência atual')}
-          ${stat(s.longest === 1 ? '1 dia' : `${s.longest} dias`, 'maior sequência')}
         </div>
 
         <section class="section card">
@@ -171,14 +201,12 @@ export default {
           ${dataTable(pages, 'Mês')}
         </section>
 
+        ${forecastSection(t)}
+        ${whereSection()}
+
         <section class="section card">
           <div class="section-head"><h2>Concluídos</h2></div>
           ${doneTable(t)}
-        </section>
-
-        <section class="section card">
-          <div class="section-head"><h2>Dias com leitura</h2><span class="small muted">16 semanas</span></div>
-          ${heatmap(t)}
         </section>`,
     );
 

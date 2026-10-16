@@ -4,7 +4,7 @@ import { icon } from '../icons.js';
 import * as store from '../../data/store.js';
 import { state } from '../../data/store.js';
 import { formatDuration, formatDecimal, splitHours } from '../../core/calc.js';
-import { minutesThisWeek, streak, totalMinutes } from '../../core/stats.js';
+import { minutesThisWeek, pace, totalMinutes } from '../../core/stats.js';
 import { today, formatDayRelative } from '../../core/dates.js';
 import { cover, progressBar, percent, subtitle, entryRow, typeDot } from '../components.js';
 import { openAddChooser } from '../sheets/add.js';
@@ -16,7 +16,7 @@ export function hero() {
   const t = today();
   const total = splitHours(totalMinutes(state.entries));
   const week = minutesThisWeek(state.entries, t);
-  const s = streak(state.entries, t);
+  const p = pace(state.entries, t, 30);
   return html`<section class="hero" id="hero">
     <div class="hero-label">Tempo total lido</div>
     <div class="hero-total" aria-label="${total.h} horas e ${total.m} minutos">
@@ -24,7 +24,7 @@ export function hero() {
     </div>
     <div class="hero-meta">
       <div>${icon('history')} Esta semana: <strong>${formatDuration(week)}</strong></div>
-      <div>${icon('flame')} ${s.current === 1 ? '1 dia seguido' : `${s.current} dias seguidos`}</div>
+      <div>${icon('stats')} Média: <strong>${formatDecimal(p.perDay, 0)} min/dia</strong></div>
     </div>
   </section>`;
 }
