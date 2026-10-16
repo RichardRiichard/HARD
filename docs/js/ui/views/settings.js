@@ -12,7 +12,7 @@ import * as bk from '../../services/backup.js';
 import { backup } from '../../services/backup.js';
 import { openVersionPicker, importFromText } from '../restore.js';
 
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.1.2';
 
 function readingForm() {
   const s = state.settings;

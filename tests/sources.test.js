@@ -62,3 +62,28 @@ test('resposta da API de post do Substack', () => {
   assert.equal(empty.publishedOn, null);
   assert.equal(empty.coverUrl, '');
 });
+
+test('Substack bloqueado: tenta direto, depois o intermediário, depois os públicos', async () => {
+  const { candidateUrls, fetchPostJson } = await import('../docs/js/services/link-info.js');
+  const api = 'https://x.substack.com/api/v1/posts/meu-post';
+  const urls = candidateUrls(api, 'https://meu.workers.dev/');
+  assert.equal(urls[0], api);
+  assert.equal(urls[1], `https://meu.workers.dev/?url=${encodeURIComponent(api)}`);
+  assert.equal(urls.length, 4);
+  assert.equal(candidateUrls(api, '').length, 3);
+
+  const tried = [];
+  const fakeFetch = async (url) => {
+    tried.push(url);
+    if (url === api) throw new TypeError('CORS'); // direto: bloqueado
+    if (url.startsWith('https://meu.workers.dev')) return { ok: true, json: async () => ({ title: 'Post certo', wordcount: 900 }) };
+    throw new Error('não deveria chegar aqui');
+  };
+  const data = await fetchPostJson(api, { fetchImpl: fakeFetch, proxyUrl: 'https://meu.workers.dev' });
+  assert.equal(data.title, 'Post certo');
+  assert.equal(tried.length, 2);
+
+  // Tudo falha (ou responde sem título): null.
+  const none = await fetchPostJson(api, { fetchImpl: async () => ({ ok: true, json: async () => ({ erro: 1 }) }), proxyUrl: '' });
+  assert.equal(none, null);
+});
