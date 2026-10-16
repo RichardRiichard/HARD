@@ -13,6 +13,7 @@
   --accent-contrast: #ffffff;
   --accent-soft: #dcefeb;
   --danger: #b42318;
+  --up: #1a7f37;
   --danger-soft: #fde8e6;
   --warn: #9a6200;
   --warn-soft: #fdf1d8;
@@ -40,6 +41,7 @@
     --accent-contrast: #08201d;
     --accent-soft: #163430;
     --danger: #f2756a;
+    --up: #4ac26b;
     --danger-soft: #3a1c19;
     --warn: #f0b44c;
     --warn-soft: #382a10;
@@ -877,6 +879,36 @@ a:focus-visible {
   font-weight: 750;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+}
+
+.stat-grid-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.stat-wide {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.stat-wide b {
+  display: inline;
+}
+
+.stat .trend {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.stat .trend.up {
+  color: var(--up);
+}
+
+.stat .trend.down {
+  color: var(--danger);
 }
 
 .stat span {

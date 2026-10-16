@@ -33,7 +33,7 @@ App web (PWA) pessoal para registrar leituras de livros, artigos e posts de blog
 - **Histórico:** cada marcação vira uma entrada (item, data, páginas, minutos). O total do app é sempre a soma das entradas. Você pode editar a data (para registrar leituras passadas), as páginas e os minutos, ou apagar uma entrada.
 - Os minutos ficam **gravados na entrada**. Se você mudar o min/página depois, o histórico não é recalculado. Para corrigir um registro, edite-o.
 - As datas usam o fuso **America/Sao_Paulo**. A semana vai de **segunda a domingo**.
-- **Ritmo:** média de minutos por dia nos últimos 30 dias, comparada com os 30 anteriores.
+- **Médias:** minutos por dia nos últimos 30 dias, com uma seta ▲ verde ou ▼ vermelha mostrando a variação em relação aos 30 dias anteriores, e minutos por semana desde 1º de janeiro.
 - **Onde foi seu tempo:** leituras, autores e sites com mais tempo, por período (30 dias, este ano, sempre), com porcentagem e top 10.
 
 ### Formas de adicionar

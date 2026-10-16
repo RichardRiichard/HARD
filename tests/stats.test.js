@@ -11,6 +11,7 @@ import {
   topItems,
   topSources,
   entriesInPeriod,
+  weeklyAverageThisYear,
   completedSummary,
   completedByMonth,
 } from '../docs/js/core/stats.js';
@@ -130,6 +131,17 @@ test('onde foi seu tempo: leituras, autores e sites com mais minutos', () => {
     topSources(entries, items, 'site').map((r) => [r.label, r.minutes, r.items]),
     [['Substack X', 70, 1]],
   );
+});
+
+test('média semanal desde o início do ano', () => {
+  // 15/10/2026 é o 288º dia do ano: 288 / 7 = 41,14 semanas.
+  const entries = [e('2026-01-01', 300), e('2026-10-15', 111.4), e('2025-12-31', 9999), e('2026-10-16', 9999)];
+  const w = weeklyAverageThisYear(entries, '2026-10-15');
+  assert.equal(w.total, 411.4);
+  assert.equal(w.weeks, 41.1);
+  assert.equal(w.perWeek, 10);
+  // Primeira semana do ano: divide por 1 semana, não por menos.
+  assert.equal(weeklyAverageThisYear([e('2026-01-02', 70)], '2026-01-03').perWeek, 70);
 });
 
 test('período das estatísticas: 30 dias, ano e sempre', () => {

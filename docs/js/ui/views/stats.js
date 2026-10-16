@@ -1,4 +1,4 @@
-// Estatísticas: total, ritmo, por tipo, por semana/mês, páginas, onde foi o tempo e concluídos.
+// Estatísticas: total, médias (dia e semana), por tipo, onde foi o tempo e concluídos.
 import { html, setHtml, $, onAction } from '../dom.js';
 import { icon } from '../icons.js';
 import * as store from '../../data/store.js';
@@ -8,59 +8,25 @@ import {
   totalMinutes,
   totalPages,
   minutesByType,
-  byWeek,
-  byMonth,
+  weeklyAverageThisYear,
   pace,
   topItems,
   topSources,
   entriesInPeriod,
   completedSummary,
 } from '../../core/stats.js';
-import { today, addDays, formatWeekShort, formatMonthShort, formatMonthLong, formatDateShort } from '../../core/dates.js';
-import { barChart, bindChart } from '../chart.js';
-
-let period = 'semana';
+import { today, yearKey } from '../../core/dates.js';
 const TYPE_PLURAL = { livro: 'Livros', artigo: 'Artigos', blog: 'Posts de blog' };
 
-function axisMinutes(v) {
-  if (v === 0) return '0';
-  if (v < 60) return `${v} min`;
-  return `${formatDecimal(v / 60, 1)} h`;
+function stat(value, label, extra = '') {
+  return html`<div class="stat"><b>${value}${extra}</b><span>${label}</span></div>`;
 }
 
-function stat(value, label) {
-  return html`<div class="stat"><b>${value}</b><span>${label}</span></div>`;
-}
-
-/** Ponto de série: label (eixo), value, name (período por extenso), text (valor formatado). */
-function point(label, value, name, text) {
-  return { label, value, name, text, tip: `${name}: ${text}` };
-}
-
-function timeSeries(t) {
-  const text = (b) => `${formatDuration(b.minutes)}${b.pages ? ` · ${formatInt(b.pages)} pág.` : ''}`;
-  if (period === 'semana') {
-    return byWeek(state.entries, t, 12).map((w) =>
-      point(formatWeekShort(w.key), w.minutes, `Semana de ${formatDateShort(w.key)} a ${formatDateShort(addDays(w.key, 6))}`, text(w)),
-    );
-  }
-  return byMonth(state.entries, t, 12).map((m) => point(formatMonthShort(m.key), m.minutes, formatMonthLong(m.key), text(m)));
-}
-
-function pageSeries(t) {
-  return byMonth(state.entries, t, 12).map((m) =>
-    point(formatMonthShort(m.key), m.pages, formatMonthLong(m.key), `${formatInt(m.pages)} páginas`),
-  );
-}
-
-function dataTable(series, header) {
-  return html`<details class="small" style="margin-top:8px">
-    <summary class="muted">Ver em tabela</summary>
-    <table class="done-table" style="margin-top:6px">
-      <thead><tr><th>${header}</th><th>Valor</th></tr></thead>
-      <tbody>${[...series].reverse().map((d) => html`<tr><td>${d.name}</td><td>${d.text}</td></tr>`)}</tbody>
-    </table>
-  </details>`;
+/** Variação pequena ao lado da média: ▲ verde quando subiu, ▼ vermelho quando caiu. */
+function trend(changePct) {
+  if (changePct === null || changePct === 0) return '';
+  const up = changePct > 0;
+  return html` <span class="trend ${up ? 'up' : 'down'}" title="em relação aos 30 dias anteriores">${up ? '▲' : '▼'} ${Math.abs(changePct)}%</span>`;
 }
 
 function typeBars() {
@@ -163,8 +129,7 @@ export default {
     const t = today();
     const total = splitHours(totalMinutes(state.entries));
     const p = pace(state.entries, t, 30);
-    const series = timeSeries(t);
-    const pages = pageSeries(t);
+    const w = weeklyAverageThisYear(state.entries, t);
 
     setHtml(
       main,
@@ -176,35 +141,15 @@ export default {
           <div class="hero-meta"><div>${state.entries.length} registros de leitura</div></div>
         </section>
 
-        <div class="stat-grid" style="margin-top:10px">
-          ${stat(`${formatDecimal(p.perDay, 0)} min`, 'por dia, média de 30 dias')}
-          ${stat(p.changePct === null ? '—' : `${p.changePct > 0 ? '+' : p.changePct < 0 ? '−' : ''}${Math.abs(p.changePct)}%`, p.changePct === null ? 'sem dados dos 30 dias anteriores' : 'vs. 30 dias anteriores')}
-          ${stat(formatInt(totalPages(state.entries)), 'páginas lidas')}
+        <div class="stat-grid stat-grid-2" style="margin-top:10px">
+          ${stat(`${formatDecimal(p.perDay, 0)} min`, 'por dia, média de 30 dias', trend(p.changePct))}
+          ${stat(formatDuration(w.perWeek), `por semana, média de ${yearKey(t)}`)}
+          <div class="stat stat-wide"><b>${formatInt(totalPages(state.entries))}</b><span>páginas lidas</span></div>
         </div>
 
         <section class="section card">
           <div class="section-head"><h2>Tempo por tipo</h2></div>
           ${typeBars()}
-        </section>
-
-        <section class="section card">
-          <div class="section-head">
-            <h2>Tempo por ${period === 'semana' ? 'semana' : 'mês'}</h2>
-          </div>
-          <div class="seg" role="group" aria-label="Período" style="margin-bottom:12px">
-            <button type="button" data-action="period" data-value="semana" aria-pressed="${String(period === 'semana')}">Semanas</button>
-            <button type="button" data-action="period" data-value="mes" aria-pressed="${String(period === 'mes')}">Meses</button>
-          </div>
-          <div id="chart-time">${barChart(series, { kind: 'minutes', axisFormat: axisMinutes, title: 'Minutos lidos por período' })}</div>
-          <div class="chart-tip" id="tip-time" aria-live="polite"></div>
-          ${dataTable(series, period === 'semana' ? 'Semana' : 'Mês')}
-        </section>
-
-        <section class="section card">
-          <div class="section-head"><h2>Páginas por mês</h2></div>
-          <div id="chart-pages">${barChart(pages, { kind: 'count', axisFormat: (v) => formatInt(v), title: 'Páginas lidas por mês' })}</div>
-          <div class="chart-tip" id="tip-pages" aria-live="polite"></div>
-          ${dataTable(pages, 'Mês')}
         </section>
 
         ${whereSection(t)}
@@ -215,13 +160,7 @@ export default {
         </section>`,
     );
 
-    bindChart($('#chart-time', main), series, $('#tip-time', main));
-    bindChart($('#chart-pages', main), pages, $('#tip-pages', main));
     onAction(main, {
-      period: (el) => {
-        period = el.dataset.value;
-        this.render(main);
-      },
       where: (el) => {
         where[el.dataset.group] = el.dataset.value;
         where.expanded = false;

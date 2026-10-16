@@ -2,7 +2,7 @@
 // Entradas têm date 'AAAA-MM-DD' (já no fuso de São Paulo), então somas por
 // semana/mês não dependem do fuso do aparelho.
 
-import { addDays, addMonths, monthKey, weekStart, yearKey } from './dates.js';
+import { addDays, addMonths, dayNumber, monthKey, weekStart, yearKey } from './dates.js';
 import { round1 } from './calc.js';
 
 export function totalMinutes(entries) {
@@ -58,6 +58,18 @@ export function byMonth(entries, today, count = 12) {
   const current = monthKey(today);
   const keys = Array.from({ length: count }, (_, i) => addMonths(current, -(count - 1 - i)));
   return bucketize(entries, monthKey, keys);
+}
+
+/**
+ * Média de minutos por semana desde 1º de janeiro até hoje:
+ * total do ano ÷ semanas já passadas (dias ÷ 7, no mínimo 1 semana).
+ */
+export function weeklyAverageThisYear(entries, today) {
+  const year = yearKey(today);
+  const total = totalMinutes(entries.filter((e) => yearKey(e.date) === year && e.date <= today));
+  const days = dayNumber(today) - dayNumber(`${year}-01-01`) + 1;
+  const weeks = Math.max(1, days / 7);
+  return { total, weeks: round1(weeks), perWeek: round1(total / weeks) };
 }
 
 /**
