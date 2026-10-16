@@ -187,12 +187,38 @@ Sem chave, o Google Books usa uma cota gratuita **compartilhada por todo mundo**
 
 A chave aparece no navegador (como todo app web), mas as restrições acima impedem o uso por outros sites e para outras APIs.
 
+## Intermediário do Substack (Cloudflare, gratuito)
+
+O Substack bloqueia a leitura dos dados dos posts direto pelo navegador. Sem configurar nada, o app tenta dois intermediários públicos gratuitos. Eles funcionam às vezes, mas são de terceiros, saem do ar e veem o link que você está lendo. Para funcionar sempre, crie o seu (10 minutos, uma vez só, sem cartão; o plano gratuito tem 100 mil usos por dia):
+
+1. Crie uma conta em https://dash.cloudflare.com/sign-up (só e-mail e senha).
+2. No menu lateral, abra **Workers e Pages** (ou **Compute (Workers)**) → **Criar** → **Criar Worker** (modelo "Hello World").
+3. Dê o nome `leituras-proxy` e clique em **Implantar** (Deploy).
+4. Clique em **Editar código**. Apague tudo, cole o conteúdo do arquivo [`cloudflare/worker.js`](cloudflare/worker.js) deste repositório e clique em **Implantar**.
+5. Copie o endereço do Worker, algo como `https://leituras-proxy.SEU-NOME.workers.dev`.
+   - Para testar, abra esse endereço no navegador: aparecer **"Origem não permitida"** é o esperado (o Worker só atende o seu app).
+6. No GitHub, edite `docs/js/config.js` e cole o endereço em `LINK_PROXY_URL = '...'`. Faça o commit.
+
+O Worker só aceita pedidos vindos de `https://richardriichard.github.io` e só repassa a API pública de posts (`/api/v1/posts/...`). Não guarda nada.
+
+## Compartilhar do Substack para o app (Android)
+
+O Android só coloca o app no menu **Compartilhar** quando ele é instalado com uma versão que já tem esse recurso (1.1.0 ou mais nova). Se você instalou antes, reinstale:
+
+1. **Antes, faça um backup:** Configurações → **Backup agora** (ou **Exportar backup (JSON)**).
+2. Desinstale o ícone **Leituras** (segure o ícone → **Desinstalar**).
+3. Abra o endereço do app no **Chrome** (não em outro navegador) → menu **⋮** → **Instalar app**. Precisa ser "Instalar app"; "Adicionar à tela inicial" cria só um atalho, que não aparece no Compartilhar.
+4. Abra o app. Se os dados não estiverem lá, conecte o Google em Configurações e restaure o backup.
+5. No Substack, abra um post → **Compartilhar** → **Leituras**. Na primeira vez, o app pode estar em "Mais" no fim da lista.
+
+No iPhone, o sistema não permite que apps web apareçam no Compartilhar; copie o link e cole no app.
+
 ## Decisões e limites
 
 - **Busca de livros:** usa a Open Library e, como alternativa, o Google Books. Os dois são gratuitos e sem chave. Sem chave, o Google Books tem uma cota compartilhada e às vezes responde "limite atingido"; tente de novo depois ou use a Open Library. O total de páginas vem de uma edição média, então confira o da sua edição (é editável).
 - **Capas offline:** ficam em cache só quando o servidor de imagens permite (CORS). As outras aparecem quando há internet. Sem capa, o app mostra as iniciais do título.
 - **Dados locais:** apagar os dados do site no navegador apaga as leituras. O app pede ao navegador armazenamento persistente (veja em Configurações → Sobre), mas o backup é a garantia.
-- **Substack:** não há login nem lista de leitura automática (o Substack não oferece isso sem servidor). Se a leitura do link for bloqueada pelo navegador, o app avisa e você completa o tempo.
+- **Substack:** não há login nem lista de leitura automática (o Substack não oferece isso). A leitura dos dados do post depende de um intermediário (o seu na Cloudflare ou os públicos); se nenhum responder, o app avisa e você completa o tempo.
 - **Lojas (Amazon etc.):** não têm acesso gratuito pelo navegador; por isso a busca usa as três fontes acima e o ISBN.
 - **Leitor de PDF:** pdf.js (Apache 2.0), incluído em `docs/vendor/pdfjs`, baixado só no primeiro uso e guardado para uso offline.
 - **Fora do escopo:** cronômetro, redes sociais.

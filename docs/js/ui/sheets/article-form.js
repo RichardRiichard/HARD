@@ -202,9 +202,10 @@ export function openArticleForm({ type = 'artigo', item = null, prefill = null }
   }
 
   let fetchSeq = 0;
+  let fetchingUrl = '';
   async function fetchLink() {
     const url = el('url').value.trim();
-    if (!url) return;
+    if (!url || url === fetchingUrl) return; // mesmo link já sendo buscado (clique + mudança de campo)
     const parsed = parsePostUrl(url);
     if (!parsed) {
       linkNote.textContent = 'Link inválido.';
@@ -213,7 +214,10 @@ export function openArticleForm({ type = 'artigo', item = null, prefill = null }
     if (parsed.isSubstack) for (const r of form.querySelectorAll('input[name=type]')) r.checked = r.value === 'blog';
     const id = ++fetchSeq;
     linkNote.textContent = 'Buscando dados do link…';
-    const info = await fetchLinkInfo(url);
+    fetchingUrl = url;
+    const info = await fetchLinkInfo(url).finally(() => {
+      if (fetchingUrl === url) fetchingUrl = '';
+    });
     if (id !== fetchSeq) return;
     linkNote.textContent = info.fetched ? (info.words ? 'Dados preenchidos pelo link.' : 'Título e autor preenchidos; informe o tempo.') : info.note;
     applyInfo({ ...info, origin: info.fetched ? 'pelo link' : '' });

@@ -1,6 +1,6 @@
 // Service worker: app funciona offline (exceto busca de livros e backup).
 // Ao publicar uma versão nova, aumente VERSION para os aparelhos baixarem os arquivos novos.
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 const APP_CACHE = `leituras-app-${VERSION}`;
 const COVERS_CACHE = 'leituras-capas';
 const MAX_COVERS = 100;

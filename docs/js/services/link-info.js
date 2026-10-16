@@ -1,10 +1,47 @@
 // Dados de um link de artigo/post. Para posts do Substack (endereços com /p/nome-do-post),
-// tenta a API pública do post (título, autor, nº de palavras). Se o Substack bloquear a
-// leitura pelo navegador, devolve só o que dá para tirar do próprio endereço.
+// lê a API pública do post (título, autor, palavras, data, imagem).
+// O Substack bloqueia a leitura direta pelo navegador (CORS), então a busca tenta, em ordem:
+// direto → seu intermediário na Cloudflare (config.js) → intermediários públicos gratuitos.
+// Se tudo falhar, devolve só o que dá para tirar do próprio endereço.
 
 import { toLocalDate } from '../core/dates.js';
+import { LINK_PROXY_URL } from '../config.js';
 
-const TIMEOUT_MS = 10000;
+const TIMEOUT_MS = 8000;
+
+/** Endereços a tentar, em ordem, para ler uma URL de API que bloqueia CORS. */
+export function candidateUrls(apiUrl, proxyUrl = LINK_PROXY_URL) {
+  const enc = encodeURIComponent(apiUrl);
+  const list = [apiUrl];
+  if (proxyUrl && proxyUrl.trim()) list.push(`${proxyUrl.trim().replace(/\/+$/, '')}/?url=${enc}`);
+  list.push(`https://api.allorigins.win/raw?url=${enc}`, `https://api.codetabs.com/v1/proxy?quest=${enc}`);
+  return list;
+}
+
+async function getJson(url, fetchImpl) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetchImpl(url, { signal: ctrl.signal, credentials: 'omit' });
+    if (!res.ok) throw new Error(String(res.status));
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Primeira resposta válida (com título) entre os candidatos; null se nenhum funcionar. */
+export async function fetchPostJson(apiUrl, { fetchImpl = fetch, proxyUrl = LINK_PROXY_URL } = {}) {
+  for (const url of candidateUrls(apiUrl, proxyUrl)) {
+    try {
+      const data = await getJson(url, fetchImpl);
+      if (data && typeof data.title === 'string' && data.title.trim()) return data;
+    } catch {
+      /* tenta o próximo */
+    }
+  }
+  return null;
+}
 
 /** "https://fulano.substack.com/p/meu-post" -> { origin, slug, publication: 'fulano' } */
 export function parsePostUrl(url) {
@@ -71,27 +108,23 @@ export async function fetchLinkInfo(url) {
   if (!parsed.slug) return { ...base, title: '', note: 'Não é um link de post (/p/…); preencha os dados.' };
   if (navigator.onLine === false) return { ...base, note: 'Sem internet: preenchido só pelo endereço.' };
 
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(`${parsed.origin}/api/v1/posts/${encodeURIComponent(parsed.slug)}`, {
-      signal: ctrl.signal,
-      credentials: 'omit',
-    });
-    if (!res.ok) throw new Error(String(res.status));
-    const post = fromSubstackPost(await res.json());
+  const data = await fetchPostJson(`${parsed.origin}/api/v1/posts/${encodeURIComponent(parsed.slug)}`);
+  if (!data) {
     return {
-      title: post.title || base.title,
-      site: post.author ? `${post.author}${parsed.publication ? ` (${parsed.publication})` : ''}` : base.site,
-      words: post.words,
-      publishedOn: post.publishedOn,
-      coverUrl: post.coverUrl,
-      fetched: true,
-      note: '',
+      ...base,
+      note: LINK_PROXY_URL
+        ? 'Não foi possível ler os dados do post agora; preenchido só pelo endereço.'
+        : 'O Substack bloqueou a leitura; preenchido só pelo endereço. Configure o intermediário (README) para funcionar sempre.',
     };
-  } catch {
-    return { ...base, note: 'O site não permitiu ler os dados; preenchido só pelo endereço. Confira o título.' };
-  } finally {
-    clearTimeout(timer);
   }
+  const post = fromSubstackPost(data);
+  return {
+    title: post.title || base.title,
+    site: post.author ? `${post.author}${parsed.publication ? ` (${parsed.publication})` : ''}` : base.site,
+    words: post.words,
+    publishedOn: post.publishedOn,
+    coverUrl: post.coverUrl,
+    fetched: true,
+    note: '',
+  };
 }
